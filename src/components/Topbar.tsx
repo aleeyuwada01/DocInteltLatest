@@ -2,7 +2,7 @@ import { Search, Settings, Moon, Sun, LogOut } from 'lucide-react';
 
 export function Topbar({ darkMode, setDarkMode, user, onLogout, onSettings }: any) {
   return (
-    <header className="h-20 pt-4 bg-[#f8fafd] dark:bg-[#131314] flex items-center justify-between px-4 transition-colors duration-200">
+    <header className="h-16 bg-[#f8fafd] dark:bg-[#131314] flex items-center justify-between px-4 transition-colors duration-200">
       <div className="flex-1 max-w-[720px] ml-2">
         <div className="relative group">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">

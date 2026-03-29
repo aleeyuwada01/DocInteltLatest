@@ -1,67 +1,106 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Sparkles, X, FileText, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { GoogleGenAI } from '@google/genai';
 
-export function ChatPanel() {
+export function ChatPanel({ token }: { token: string }) {
   const [isOpen, setIsOpen] = useState(true);
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', content: string, sources?: any[] }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = protocol + '//' + window.location.host;
-    
-    wsRef.current = new WebSocket(wsUrl);
-    
-    wsRef.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'chunk') {
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage && lastMessage.role === 'ai') {
-            lastMessage.content += data.text;
-          } else {
-            newMessages.push({ role: 'ai', content: data.text });
-          }
-          return newMessages;
-        });
-      } else if (data.type === 'done') {
-        setIsLoading(false);
-        setMessages(prev => {
-          const newMessages = [...prev];
-          const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage && lastMessage.role === 'ai') {
-            lastMessage.sources = data.sources;
-          }
-          return newMessages;
-        });
-      } else if (data.type === 'error') {
-        setIsLoading(false);
-        setMessages(prev => [...prev, { role: 'ai', content: data.message }]);
-      }
-    };
-
-    return () => {
-      if (wsRef.current) wsRef.current.close();
-    };
-  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!input.trim() || !wsRef.current) return;
+  const handleSend = async () => {
+    if (!input.trim()) return;
     
-    setMessages(prev => [...prev, { role: 'user', content: input }]);
+    const query = input;
+    setMessages(prev => [...prev, { role: 'user', content: query }]);
+    setInput('');
     setIsLoading(true);
     
-    wsRef.current.send(JSON.stringify({ type: 'chat', query: input }));
-    setInput('');
+    try {
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '' });
+      
+      // 1. Embed query
+      let queryEmbedding: number[] = [];
+      try {
+        const embedResult = await ai.models.embedContent({
+          model: 'gemini-embedding-2-preview',
+          contents: [query],
+        });
+        queryEmbedding = embedResult.embeddings?.[0]?.values || [];
+      } catch (e) {
+        console.error('Error embedding query:', e);
+      }
+      
+      // 2. Search vector DB
+      let context = '';
+      let sourceFiles: any[] = [];
+      
+      if (queryEmbedding.length > 0) {
+        const searchRes = await fetch('/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ embedding: queryEmbedding })
+        });
+        
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          context = searchData.context;
+          sourceFiles = searchData.sourceFiles;
+        }
+      }
+      
+      // 3. Send to Gemini
+      const prompt = `You are DocIntel, an intelligent document assistant.
+Answer the user's query based on the provided document context.
+If the context doesn't contain the answer, say so, but try to be helpful.
+
+Context:
+${context}
+
+User Query: ${query}`;
+
+      const responseStream = await ai.models.generateContentStream({
+        model: 'gemini-3.1-pro-preview',
+        contents: prompt,
+      });
+
+      setMessages(prev => [...prev, { role: 'ai', content: '' }]);
+
+      for await (const chunk of responseStream) {
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage && lastMessage.role === 'ai') {
+            lastMessage.content += chunk.text;
+          }
+          return newMessages;
+        });
+      }
+      
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage && lastMessage.role === 'ai') {
+          lastMessage.sources = sourceFiles;
+        }
+        return newMessages;
+      });
+      
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, { role: 'ai', content: 'An error occurred processing your request. ' + (error.message || '') }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) {
@@ -76,7 +115,7 @@ export function ChatPanel() {
   }
 
   return (
-    <aside className="w-80 bg-white dark:bg-[#1e1f20] border-l border-gray-200/50 dark:border-gray-800/50 flex flex-col h-full shadow-sm z-40 transition-colors duration-200 m-4 ml-0 rounded-2xl overflow-hidden">
+    <aside className="w-80 bg-white dark:bg-[#1e1f20] border border-gray-200/50 dark:border-gray-800/50 flex flex-col h-full shadow-sm z-40 transition-colors duration-200 rounded-2xl overflow-hidden shrink-0 min-h-0">
       <div className="p-4 border-b border-gray-100 dark:border-gray-800/50 flex justify-between items-center bg-white dark:bg-[#1e1f20]">
         <div className="flex items-center gap-2 text-[#1f1f1f] dark:text-[#e3e3e3]">
           <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />

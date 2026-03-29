@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -43,24 +44,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 // Simple in-memory vector store for demo purposes
 const vectorStore: { id: string, fileId: string, embedding: number[], text: string }[] = [];
-
-async function generateEmbedding(text: string) {
-  try {
-    const result = await ai.models.embedContent({
-      model: 'gemini-embedding-2-preview',
-      contents: [text],
-    });
-    return result.embeddings?.[0]?.values || [];
-  } catch (error) {
-    console.error('Error generating embedding:', error);
-    return [];
-  }
-}
 
 function cosineSimilarity(vecA: number[], vecB: number[]) {
   let dotProduct = 0;
@@ -275,29 +260,10 @@ async function startServer() {
       return res.status(400).json({ error: 'Storage limit exceeded' });
     }
     
-    // Mock parsing file to markdown
-    let markdown = `# ${req.file.originalname}\n\nThis is the extracted content of ${req.file.originalname}.\n\n`;
+    let markdown = req.body.markdown || `# ${req.file.originalname}\n\nThis is the extracted content of ${req.file.originalname}.\n\n`;
     
     if (req.file.mimetype === 'text/plain' || req.file.mimetype === 'text/markdown') {
       markdown = fs.readFileSync(req.file.path, 'utf-8');
-    } else {
-      if (req.file.mimetype.startsWith('image/')) {
-        try {
-          const imageBase64 = fs.readFileSync(req.file.path, 'base64');
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
-            contents: {
-              parts: [
-                { text: 'Extract all text from this image and describe what it is. Format as Markdown.' },
-                { inlineData: { data: imageBase64, mimeType: req.file.mimetype } }
-              ]
-            }
-          });
-          markdown = response.text || markdown;
-        } catch (e) {
-          console.error('Error extracting image text:', e);
-        }
-      }
     }
 
     // Save to DB
@@ -317,15 +283,21 @@ async function startServer() {
     };
     db.files.push(newFile);
     
-    // Generate embedding for the markdown
-    const embedding = await generateEmbedding(markdown);
-    if (embedding.length > 0) {
-      vectorStore.push({
-        id: uuidv4(),
-        fileId,
-        embedding,
-        text: markdown
-      });
+    // Save embedding if provided
+    if (req.body.embedding) {
+      try {
+        const embedding = JSON.parse(req.body.embedding);
+        if (Array.isArray(embedding) && embedding.length > 0) {
+          vectorStore.push({
+            id: uuidv4(),
+            fileId,
+            embedding,
+            text: markdown
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing embedding:', e);
+      }
     }
     
     res.json({
@@ -467,85 +439,40 @@ async function startServer() {
     });
   }
 
-  const server = app.listen(PORT, "0.0.0.0" as any, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.post('/api/search', authenticate, (req: any, res) => {
+    const { embedding } = req.body;
+    const userId = req.user.id;
+    
+    let context = '';
+    let sourceFiles: any[] = [];
+    
+    if (embedding && Array.isArray(embedding) && embedding.length > 0 && vectorStore.length > 0) {
+      const results = vectorStore.map(doc => ({
+        ...doc,
+        score: cosineSimilarity(embedding, doc.embedding)
+      })).sort((a, b) => b.score - a.score).slice(0, 5);
+      
+      // Filter results by user access
+      const accessibleResults = results.filter(r => {
+        const file = db.files.find(f => f.id === r.fileId);
+        return file && (file.ownerId === userId || file.sharedWith?.includes(userId));
+      });
+      
+      context = accessibleResults.map(r => r.text).join('\n\n---\n\n');
+      
+      const fileIds = accessibleResults.map(r => r.fileId);
+      if (fileIds.length > 0) {
+        sourceFiles = db.files
+          .filter(f => fileIds.includes(f.id))
+          .map(f => ({ id: f.id, originalName: f.originalName }));
+      }
+    }
+    
+    res.json({ context, sourceFiles });
   });
 
-  // WebSocket for AI Chat
-  const wss = new WebSocketServer({ server });
-
-  wss.on('connection', (ws) => {
-    ws.on('message', async (message) => {
-      try {
-        const data = JSON.parse(message.toString());
-        if (data.type === 'chat') {
-          const query = data.query;
-          const token = data.token;
-          
-          let userId = null;
-          if (token) {
-            try {
-              const decoded = jwt.verify(token, JWT_SECRET) as any;
-              userId = decoded.id;
-            } catch (e) {}
-          }
-          
-          // 1. Embed query
-          const queryEmbedding = await generateEmbedding(query);
-          
-          // 2. Search vector DB
-          let context = '';
-          let sourceFiles: any[] = [];
-          
-          if (queryEmbedding.length > 0 && vectorStore.length > 0) {
-            const results = vectorStore.map(doc => ({
-              ...doc,
-              score: cosineSimilarity(queryEmbedding, doc.embedding)
-            })).sort((a, b) => b.score - a.score).slice(0, 5);
-            
-            // Filter results by user access
-            const accessibleResults = results.filter(r => {
-              if (!userId) return false;
-              const file = db.files.find(f => f.id === r.fileId);
-              return file && (file.ownerId === userId || file.sharedWith?.includes(userId));
-            });
-            
-            context = accessibleResults.map(r => r.text).join('\n\n---\n\n');
-            
-            const fileIds = accessibleResults.map(r => r.fileId);
-            if (fileIds.length > 0) {
-              sourceFiles = db.files
-                .filter(f => fileIds.includes(f.id))
-                .map(f => ({ id: f.id, originalName: f.originalName }));
-            }
-          }
-
-          // 3. Send to Gemini
-          const prompt = `You are DocIntel, an intelligent document assistant.
-Answer the user's query based on the provided document context.
-If the context doesn't contain the answer, say so, but try to be helpful.
-
-Context:
-${context}
-
-User Query: ${query}`;
-
-          const responseStream = await ai.models.generateContentStream({
-            model: 'gemini-3.1-pro-preview',
-            contents: prompt,
-          });
-
-          for await (const chunk of responseStream) {
-            ws.send(JSON.stringify({ type: 'chunk', text: chunk.text }));
-          }
-          
-          ws.send(JSON.stringify({ type: 'done', sources: sourceFiles }));
-        }
-      } catch (error) {
-        console.error('WebSocket error:', error);
-        ws.send(JSON.stringify({ type: 'error', message: 'An error occurred processing your request.' }));
-      }
-    });
+  const server = app.listen(PORT, "0.0.0.0" as any, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 

@@ -22,12 +22,16 @@ export default function App() {
   const [currentView, setCurrentView] = useState('drive'); // 'drive' or 'trash'
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [storage, setStorage] = useState({ used: 0, limit: 15 * 1024 * 1024 * 1024 });
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStorageOpen, setIsStorageOpen] = useState(false);
 
   useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -108,10 +112,56 @@ export default function App() {
   const handleUpload = async (file: File) => {
     if (!file || !token) return;
 
+    toast.loading(`Processing ${file.name}...`, { id: 'upload' });
+
+    let markdown = `# ${file.name}\n\nThis is the extracted content of ${file.name}.\n\n`;
+    let embedding: number[] = [];
+
+    try {
+      const ai = new (await import('@google/genai')).GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '' });
+
+      if (file.type === 'text/plain' || file.type === 'text/markdown') {
+        markdown = await file.text();
+      } else if (file.type.startsWith('image/')) {
+        toast.loading(`Extracting text from image...`, { id: 'upload' });
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(file);
+        });
+        const base64Data = await base64Promise;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.1-pro-preview',
+          contents: {
+            parts: [
+              { text: 'Extract all text from this image and describe what it is. Format as Markdown.' },
+              { inlineData: { data: base64Data, mimeType: file.type } }
+            ]
+          }
+        });
+        markdown = response.text || markdown;
+      }
+
+      toast.loading(`Generating embeddings...`, { id: 'upload' });
+      const embedResult = await ai.models.embedContent({
+        model: 'gemini-embedding-2-preview',
+        contents: [markdown],
+      });
+      embedding = embedResult.embeddings?.[0]?.values || [];
+    } catch (error) {
+      console.error('Error processing file with AI:', error);
+      // Continue with upload even if AI processing fails
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     if (currentFolderId) {
       formData.append('folderId', currentFolderId);
+    }
+    formData.append('markdown', markdown);
+    if (embedding.length > 0) {
+      formData.append('embedding', JSON.stringify(embedding));
     }
 
     toast.loading(`Uploading ${file.name}...`, { id: 'upload' });
@@ -167,8 +217,8 @@ export default function App() {
           onSettings={() => setIsSettingsOpen(true)}
         />
         
-        <div className="flex-1 overflow-hidden p-4 pt-0 flex flex-col">
-          <div className="h-full bg-white dark:bg-[#1e1f20] rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-200/50 dark:border-gray-800/50">
+        <div className="flex-1 overflow-hidden p-4 pt-0 flex flex-row gap-4 min-h-0">
+          <div className="flex-1 h-full bg-white dark:bg-[#1e1f20] rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-200/50 dark:border-gray-800/50 min-h-0">
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -187,10 +237,10 @@ export default function App() {
               />
             )}
           </div>
+          <ChatPanel token={token} />
         </div>
       </div>
 
-      <ChatPanel token={token} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} token={token} user={user} />
       <StorageModal isOpen={isStorageOpen} onClose={() => setIsStorageOpen(false)} token={token} />
       <Toaster position="top-center" theme={darkMode ? 'dark' : 'light'} />

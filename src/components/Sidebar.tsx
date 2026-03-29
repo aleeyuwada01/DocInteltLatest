@@ -44,7 +44,7 @@ export function Sidebar({ currentView, setCurrentView, storage, onUpload, onFold
   };
 
   return (
-    <aside className="w-64 bg-[#f8fafd] dark:bg-[#131314] flex flex-col h-full transition-colors duration-200 pt-4">
+    <aside className="w-64 bg-[#f8fafd] dark:bg-[#131314] flex flex-col h-full transition-colors duration-200">
       <div className="p-4">
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="w-8 h-8 flex items-center justify-center">
@@ -54,7 +54,7 @@ export function Sidebar({ currentView, setCurrentView, storage, onUpload, onFold
               <path d="M76.2 66.85 53.85 28.15 31.5 66.85h44.7z" fill="#fbbc04"/>
             </svg>
           </div>
-          <span className="text-[22px] font-normal text-[#444746] dark:text-gray-200">DocIntel</span>
+          <span className="text-[22px] font-normal text-[#444746] dark:text-gray-200">DocIntel AI</span>
         </div>
         
         <div className="relative mb-4">
