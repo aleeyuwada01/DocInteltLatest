@@ -67,11 +67,7 @@ export function Sidebar({
         <div className="flex items-center justify-between px-5 h-[60px] border-b border-gray-200/40 dark:border-gray-800/40 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 87.3 78" className="w-5 h-5">
-                <path d="m6.6 66.85 22.35-38.7 22.35 38.7H6.6z" fill="#1ea362"/>
-                <path d="m41.4 6.45 22.35 38.7h-44.7L41.4 6.45z" fill="#4285f4"/>
-                <path d="M76.2 66.85 53.85 28.15 31.5 66.85h44.7z" fill="#fbbc04"/>
-              </svg>
+              <DocIntelLogo size={24} />
             </div>
             <span className="text-[18px] font-semibold text-[#444746] dark:text-gray-100 tracking-tight">DocIntel</span>
           </div>
