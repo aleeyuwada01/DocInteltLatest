@@ -1,0 +1,6 @@
+FAIL: text-embedding-004 — {"error":{"code":404,"message":"models/text-embedding-004 is not found for API version v1beta, or is not supported for e
+FAIL: text-embedding-005 — {"error":{"code":404,"message":"models/text-embedding-005 is not found for API version v1beta, or is not supported for e
+FAIL: embedding-001 — {"error":{"code":404,"message":"models/embedding-001 is not found for API version v1beta, or is not supported for embedC
+FAIL: gemini-embedding-exp-03-07 — {"error":{"code":404,"message":"models/gemini-embedding-exp-03-07 is not found for API version v1beta, or is not support
+FAIL: gemini-2.0-flash — {"error":{"code":404,"message":"models/gemini-2.0-flash is not found for API version v1beta, or is not supported for emb
+FAIL: gemini-2.5-flash — {"error":{"code":404,"message":"models/gemini-2.5-flash is not found for API version v1beta, or is not supported for emb

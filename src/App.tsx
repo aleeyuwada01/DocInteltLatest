@@ -9,8 +9,10 @@ import { Topbar } from './components/Topbar';
 import { MainContent } from './components/MainContent';
 import { ChatPanel } from './components/ChatPanel';
 import { Login } from './components/Login';
+import { LandingPage } from './components/LandingPage';
 import { SettingsModal } from './components/SettingsModal';
 import { StorageModal } from './components/StorageModal';
+import { ParsedContentModal } from './components/ParsedContentModal';
 import { Toaster, toast } from 'sonner';
 
 export default function App() {
@@ -22,6 +24,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('drive'); // 'drive' or 'trash'
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [storage, setStorage] = useState({ used: 0, limit: 15 * 1024 * 1024 * 1024 });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -29,6 +32,11 @@ export default function App() {
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStorageOpen, setIsStorageOpen] = useState(false);
+  const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+  // 'landing' | 'auth' — only relevant when not logged in
+  const [unauthView, setUnauthView] = useState<'landing' | 'auth'>(() =>
+    localStorage.getItem('token') ? 'auth' : 'landing'
+  );
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
@@ -112,59 +120,13 @@ export default function App() {
   const handleUpload = async (file: File) => {
     if (!file || !token) return;
 
-    toast.loading(`Processing ${file.name}...`, { id: 'upload' });
-
-    let markdown = `# ${file.name}\n\nThis is the extracted content of ${file.name}.\n\n`;
-    let embedding: number[] = [];
-
-    try {
-      const ai = new (await import('@google/genai')).GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '' });
-
-      if (file.type === 'text/plain' || file.type === 'text/markdown') {
-        markdown = await file.text();
-      } else if (file.type.startsWith('image/')) {
-        toast.loading(`Extracting text from image...`, { id: 'upload' });
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onload = () => resolve((reader.result as string).split(',')[1]);
-          reader.readAsDataURL(file);
-        });
-        const base64Data = await base64Promise;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.1-pro-preview',
-          contents: {
-            parts: [
-              { text: 'Extract all text from this image and describe what it is. Format as Markdown.' },
-              { inlineData: { data: base64Data, mimeType: file.type } }
-            ]
-          }
-        });
-        markdown = response.text || markdown;
-      }
-
-      toast.loading(`Generating embeddings...`, { id: 'upload' });
-      const embedResult = await ai.models.embedContent({
-        model: 'gemini-embedding-2-preview',
-        contents: [markdown],
-      });
-      embedding = embedResult.embeddings?.[0]?.values || [];
-    } catch (error) {
-      console.error('Error processing file with AI:', error);
-      // Continue with upload even if AI processing fails
-    }
+    toast.loading(`Uploading ${file.name}...`, { id: 'upload' });
 
     const formData = new FormData();
     formData.append('file', file);
     if (currentFolderId) {
       formData.append('folderId', currentFolderId);
     }
-    formData.append('markdown', markdown);
-    if (embedding.length > 0) {
-      formData.append('embedding', JSON.stringify(embedding));
-    }
-
-    toast.loading(`Uploading ${file.name}...`, { id: 'upload' });
 
     try {
       const res = await fetch('/api/upload', {
@@ -172,10 +134,10 @@ export default function App() {
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
-      
+
       if (res.ok) {
-        fetchDrive(); // Refresh list
-        toast.success(`${file.name} uploaded successfully`, { id: 'upload' });
+        fetchDrive();
+        toast.success(`${file.name} uploaded — parsing in background…`, { id: 'upload' });
       } else {
         const data = await res.json();
         toast.error(data.error || `Failed to upload ${file.name}`, { id: 'upload' });
@@ -186,10 +148,22 @@ export default function App() {
     }
   };
 
+
   if (!token) {
+    if (unauthView === 'landing') {
+      return (
+        <>
+          <LandingPage
+            onGetStarted={() => setUnauthView('auth')}
+            onSignIn={() => setUnauthView('auth')}
+          />
+          <Toaster position="top-center" theme={darkMode ? 'dark' : 'light'} />
+        </>
+      );
+    }
     return (
       <>
-        <Login onLogin={handleLogin} />
+        <Login onLogin={handleLogin} onBack={() => setUnauthView('landing')} />
         <Toaster position="top-center" theme={darkMode ? 'dark' : 'light'} />
       </>
     );
@@ -206,6 +180,8 @@ export default function App() {
         currentFolderId={currentFolderId}
         token={token}
         onUpgrade={() => setIsStorageOpen(true)}
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
       />
       
       <div className="flex-1 flex flex-col min-w-0 bg-[#f8fafd] dark:bg-[#131314] transition-colors duration-200">
@@ -215,9 +191,11 @@ export default function App() {
           user={user} 
           onLogout={handleLogout}
           onSettings={() => setIsSettingsOpen(true)}
+          token={token}
+          onMenuClick={() => setIsMobileMenuOpen(true)}
         />
         
-        <div className="flex-1 overflow-hidden p-4 pt-0 flex flex-row gap-4 min-h-0">
+        <div className="flex-1 overflow-hidden p-2 md:p-4 pt-0 flex flex-row gap-4 min-h-0 relative">
           <div className="flex-1 h-full bg-white dark:bg-[#1e1f20] rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-200/50 dark:border-gray-800/50 min-h-0">
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center">
@@ -234,15 +212,24 @@ export default function App() {
                 setCurrentFolderId={setCurrentFolderId}
                 token={token}
                 user={user}
+                onPreviewFile={setPreviewFileId}
               />
             )}
           </div>
-          <ChatPanel token={token} />
+          <ChatPanel token={token} onPreviewFile={setPreviewFileId} />
         </div>
       </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} token={token} user={user} />
       <StorageModal isOpen={isStorageOpen} onClose={() => setIsStorageOpen(false)} token={token} />
+      {previewFileId && (
+        <ParsedContentModal 
+          fileId={previewFileId} 
+          files={files} 
+          token={token} 
+          onClose={() => setPreviewFileId(null)} 
+        />
+      )}
       <Toaster position="top-center" theme={darkMode ? 'dark' : 'light'} />
     </div>
   );

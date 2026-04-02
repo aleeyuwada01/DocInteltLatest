@@ -1,160 +1,204 @@
-import { Home, HardDrive, Monitor, Users, Clock, Star, AlertCircle, Trash2, Cloud, Plus, FolderPlus, FileUp, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  HardDrive, Trash2, Cloud, Plus, FolderPlus, FileUp, X,
+  ChevronRight, UploadCloud
+} from 'lucide-react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
+import { DocIntelLogo } from './LandingPage';
 
-export function Sidebar({ currentView, setCurrentView, storage, onUpload, onFolderCreate, currentFolderId, token, onUpgrade }: any) {
+export function Sidebar({
+  currentView, setCurrentView, storage, onUpload,
+  onFolderCreate, currentFolderId, token, onUpgrade, isOpen, onClose
+}: any) {
   const [isNewOpen, setIsNewOpen] = useState(false);
-  const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [folderLoading, setFolderLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const newMenuRef = useRef<HTMLDivElement>(null);
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const used = storage.used || 0;
+  const limit = storage.limit || 1;
+  const pct = Math.min(100, (used / limit) * 100);
+  const isWarning = pct > 80;
+  const isDanger = pct > 95;
+
+  const fmt = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024, s = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${s[i]}`;
   };
-
-  const storagePercentage = Math.min(100, (storage.used / storage.limit) * 100);
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
-    
+    setFolderLoading(true);
     try {
       const res = await fetch('/api/folders', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name: newFolderName, parentId: currentFolderId })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: newFolderName, parentId: currentFolderId }),
       });
       if (res.ok) {
         toast.success('Folder created');
-        setNewFolderName('');
-        setIsCreateFolderModalOpen(false);
+        setNewFolderName(''); setIsCreateFolderOpen(false);
         onFolderCreate();
-      } else {
-        toast.error('Failed to create folder');
-      }
-    } catch (e) {
-      toast.error('Failed to create folder');
-    }
+      } else toast.error('Failed to create folder');
+    } catch { toast.error('Failed to create folder'); }
+    finally { setFolderLoading(false); }
   };
 
   return (
-    <aside className="w-64 bg-[#f8fafd] dark:bg-[#131314] flex flex-col h-full transition-colors duration-200">
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-8 px-2">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <svg viewBox="0 0 87.3 78" className="w-6 h-6">
-              <path d="m6.6 66.85 22.35-38.7 22.35 38.7H6.6z" fill="#1ea362"/>
-              <path d="m41.4 6.45 22.35 38.7h-44.7L41.4 6.45z" fill="#4285f4"/>
-              <path d="M76.2 66.85 53.85 28.15 31.5 66.85h44.7z" fill="#fbbc04"/>
-            </svg>
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col h-full transition-transform duration-300 ease-in-out md:relative md:translate-x-0
+        bg-[#f8fafd] dark:bg-[#131314] border-r border-gray-200/50 dark:border-gray-800/50
+        ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}
+      >
+        {/* ── Logo ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-5 h-[60px] border-b border-gray-200/40 dark:border-gray-800/40 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 87.3 78" className="w-5 h-5">
+                <path d="m6.6 66.85 22.35-38.7 22.35 38.7H6.6z" fill="#1ea362"/>
+                <path d="m41.4 6.45 22.35 38.7h-44.7L41.4 6.45z" fill="#4285f4"/>
+                <path d="M76.2 66.85 53.85 28.15 31.5 66.85h44.7z" fill="#fbbc04"/>
+              </svg>
+            </div>
+            <span className="text-[18px] font-semibold text-[#444746] dark:text-gray-100 tracking-tight">DocIntel</span>
           </div>
-          <span className="text-[22px] font-normal text-[#444746] dark:text-gray-200">DocIntel AI</span>
-        </div>
-        
-        <div className="relative mb-4">
-          <button 
-            onClick={() => setIsNewOpen(!isNewOpen)}
-            className="flex items-center gap-3 px-5 py-4 bg-white dark:bg-[#37393b] rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.24)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)] hover:bg-[#f8fafd] dark:hover:bg-[#4a4c4f] transition-all w-fit group"
-          >
-            <Plus className="w-6 h-6 text-[#444746] dark:text-gray-200 group-hover:text-blue-600 transition-colors" />
-            <span className="text-sm font-medium text-[#444746] dark:text-gray-200">New</span>
+          <button className="md:hidden p-1.5 text-[#9aa0a6] rounded-xl hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] transition-colors" onClick={onClose}>
+            <X className="w-4 h-4" />
           </button>
-          
-          {isNewOpen && (
-            <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 py-2">
-              <button 
-                onClick={() => {
-                  setIsNewOpen(false);
-                  setIsCreateFolderModalOpen(true);
-                }} 
-                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <FolderPlus className="w-4 h-4" /> New folder
-              </button>
-              <div className="my-1 border-t border-gray-100 dark:border-gray-700"></div>
-              <label className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                <FileUp className="w-4 h-4" /> File upload
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  onChange={(e) => { 
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      onUpload(file);
-                    }
-                    setIsNewOpen(false); 
-                  }} 
-                />
-              </label>
-            </div>
-          )}
         </div>
 
-        <nav className="space-y-1">
-          <NavItem icon={<HardDrive size={18} />} label="My Drive" active={currentView === 'drive'} onClick={() => setCurrentView('drive')} />
-          <NavItem icon={<Trash2 size={18} />} label="Trash" active={currentView === 'trash'} onClick={() => setCurrentView('trash')} />
-        </nav>
-      </div>
-      
-      <div className="mt-auto p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Cloud className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Storage</span>
-        </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-2">
-          <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${storagePercentage}%` }}></div>
-        </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          {formatBytes(storage.used)} of {formatBytes(storage.limit)} used
-        </div>
-        <button 
-          onClick={onUpgrade}
-          className="text-sm text-blue-600 dark:text-blue-400 border border-gray-300 dark:border-gray-600 rounded-full px-4 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full"
-        >
-          Get more storage
-        </button>
-      </div>
+        {/* ── Nav content ──────────────────────────────────── */}
+        <div className="flex-1 flex flex-col overflow-y-auto py-4 px-3 min-h-0">
 
-      {/* Create Folder Modal */}
-      {isCreateFolderModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-[#1e1f20] rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col border border-gray-200/50 dark:border-gray-800/50">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-[#1f1f1f] dark:text-[#e3e3e3]">New folder</h2>
-              <button onClick={() => setIsCreateFolderModalOpen(false)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400">
-                <X className="w-5 h-5" />
+          {/* New button */}
+          <div className="relative mb-4" ref={newMenuRef}>
+            <button
+              onClick={() => setIsNewOpen(v => !v)}
+              className="flex items-center gap-3 px-5 py-3 bg-white dark:bg-[#282a2c] rounded-2xl shadow-sm hover:shadow-md dark:shadow-none border border-gray-200/50 dark:border-gray-700/50 hover:bg-[#f8fafd] dark:hover:bg-[#37393b] transition-all duration-200 w-fit group"
+            >
+              <Plus className="w-5 h-5 text-[#444746] dark:text-gray-200 group-hover:text-[#0b57d0] transition-colors" />
+              <span className="text-sm font-semibold text-[#444746] dark:text-gray-200">New</span>
+            </button>
+
+            {isNewOpen && (
+              <div className="absolute top-[calc(100%+6px)] left-0 w-52 bg-white dark:bg-[#1e1f20] border border-gray-200/60 dark:border-gray-700/50 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-slide-up">
+                <button
+                  onClick={() => { setIsNewOpen(false); setIsCreateFolderOpen(true); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors"
+                >
+                  <FolderPlus className="w-4 h-4 text-[#0b57d0] dark:text-[#a8c7fa]" />
+                  <span className="font-medium">New Folder</span>
+                </button>
+                <div className="my-1 h-px bg-gray-100 dark:bg-gray-800 mx-2" />
+                <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors cursor-pointer">
+                  <FileUp className="w-4 h-4 text-[#0b57d0] dark:text-[#a8c7fa]" />
+                  <span className="font-medium">File Upload</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    ref={fileRef}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) onUpload(file);
+                      setIsNewOpen(false);
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Nav items */}
+          <nav className="space-y-0.5">
+            <NavItem
+              icon={<HardDrive size={16} />}
+              label="My Drive"
+              active={currentView === 'drive'}
+              onClick={() => setCurrentView('drive')}
+            />
+            <NavItem
+              icon={<Trash2 size={16} />}
+              label="Trash"
+              active={currentView === 'trash'}
+              onClick={() => setCurrentView('trash')}
+            />
+          </nav>
+        </div>
+
+        {/* ── Storage meter ─────────────────────────────────── */}
+        <div className="p-4 mx-3 mb-4 rounded-2xl bg-white dark:bg-[#1e1f20] border border-gray-200/50 dark:border-gray-800/50 shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-[#5f6368] dark:text-[#9aa0a6]" />
+              <span className="text-xs font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Storage</span>
+            </div>
+            <span className="text-[11px] text-[#9aa0a6] font-medium">{Math.round(pct)}%</span>
+          </div>
+
+          {/* Bar */}
+          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden">
+            <div
+              className={`h-1.5 rounded-full transition-all duration-700 ${
+                isDanger ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-[#0b57d0]'
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-[#9aa0a6]">{fmt(used)} <span className="text-[#c4c7c5]">/ {fmt(limit)}</span></p>
+            {isDanger && <span className="text-[10px] text-red-500 font-semibold">Almost full!</span>}
+          </div>
+
+          <button
+            onClick={onUpgrade}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-[#0b57d0] dark:text-[#a8c7fa] border border-[#0b57d0]/20 dark:border-[#a8c7fa]/20 rounded-xl hover:bg-[#e8f0fe] dark:hover:bg-[#a8c7fa]/10 transition-colors"
+          >
+            <UploadCloud className="w-3.5 h-3.5" />
+            Get more storage
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Create Folder Modal ──────────────────────────── */}
+      {isCreateFolderOpen && (
+        <div className="modal-backdrop" onClick={() => setIsCreateFolderOpen(false)}>
+          <div
+            className="bg-white dark:bg-[#1e1f20] rounded-2xl shadow-2xl w-full max-w-sm border border-gray-200/50 dark:border-gray-800/50 overflow-hidden animate-scale-in"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="text-base font-semibold text-[#1a1a2e] dark:text-white">New Folder</h3>
+              <button onClick={() => setIsCreateFolderOpen(false)} className="p-2 rounded-xl hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] text-[#9aa0a6]">
+                <X className="w-4 h-4" />
               </button>
             </div>
-            
             <form onSubmit={handleCreateFolder} className="p-6">
-              <input 
-                type="text" 
-                required
-                autoFocus
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#9aa0a6] mb-2">Folder Name</label>
+              <input
+                type="text"
+                required autoFocus
                 value={newFolderName}
                 onChange={e => setNewFolderName(e.target.value)}
                 placeholder="Untitled folder"
-                className="w-full px-3 py-2 bg-white dark:bg-[#1e1f20] border border-blue-500 rounded-lg text-sm text-[#1f1f1f] dark:text-[#e3e3e3] focus:outline-none focus:ring-1 focus:ring-blue-500 mb-6"
+                className="input-field mb-5"
               />
               <div className="flex justify-end gap-2">
-                <button 
-                  type="button" 
-                  onClick={() => setIsCreateFolderModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={!newFolderName.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-full transition-colors"
-                >
+                <button type="button" onClick={() => setIsCreateFolderOpen(false)} className="btn-ghost">Cancel</button>
+                <button type="submit" disabled={!newFolderName.trim() || folderLoading} className="btn-primary">
                   Create
                 </button>
               </div>
@@ -162,22 +206,25 @@ export function Sidebar({ currentView, setCurrentView, storage, onUpload, onFold
           </div>
         </div>
       )}
-    </aside>
+    </>
   );
 }
 
-function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick: () => void }) {
+function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`w-full flex items-center gap-4 px-4 py-2 rounded-r-full transition-colors ${
-        active 
-          ? 'bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff]' 
-          : 'text-[#444746] dark:text-gray-300 hover:bg-[#e9eef6] dark:hover:bg-[#282a2c]'
+      className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+        active
+          ? 'nav-active'
+          : 'text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] hover:text-[#1a1a2e] dark:hover:text-white'
       }`}
     >
-      {icon}
-      <span className="text-sm font-medium">{label}</span>
+      <span className="flex items-center gap-3">
+        {icon}
+        {label}
+      </span>
+      {active && <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
     </button>
   );
 }
