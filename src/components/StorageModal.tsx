@@ -71,7 +71,7 @@ export function StorageModal({
   const handleUpgrade = async (plan: string) => {
     setIsLoading(plan);
     try {
-      const res = await fetch('/api/create-checkout-session', {
+      const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan }),

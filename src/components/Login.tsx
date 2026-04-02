@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2, Check, ArrowLeft, FileText, Search, Users, Shield, Sparkles, Zap } from 'lucide-react';
 import { DocIntelLogo } from './LandingPage';
+import { supabase } from '../lib/supabaseClient';
 
 /* ── Feature list shown on register side ─────────────────────── */
 const REGISTER_FEATURES = [
@@ -17,7 +18,7 @@ export function Login({
   onLogin, onBack
 }: { onLogin: (token: string, user: any) => void; onBack?: () => void }) {
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,21 +33,28 @@ export function Login({
     }
     setIsLoading(true);
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        onLogin(data.token, data.user);
-        toast.success(isLogin ? 'Welcome back!' : 'Account created — welcome to DocIntel!');
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        const user = { id: data.user.id, username: email.split('@')[0], role: 'admin' };
+        onLogin(data.session.access_token, user);
+        toast.success('Welcome back!');
       } else {
-        toast.error(data.error || 'Authentication failed');
+        const { data, error } = await supabase.auth.signUp({ 
+          email, password,
+          options: { data: { username: email.split('@')[0] } }
+        });
+        if (error) throw error;
+        if (data.session) {
+          const user = { id: data.user.id, username: email.split('@')[0], role: 'admin' };
+          onLogin(data.session.access_token, user);
+          toast.success('Account created — welcome to DocIntel!');
+        } else {
+          toast.success('Account created! Please check your email.');
+        }
       }
-    } catch {
-      toast.error('Connection error. Please try again.');
+    } catch (err: any) {
+      toast.error(err.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -167,11 +175,7 @@ export function Login({
               </button>
             )}
             <div className="flex items-center gap-2">
-              <svg viewBox="0 0 87.3 78" className="w-5 h-5">
-                <path d="m6.6 66.85 22.35-38.7 22.35 38.7H6.6z" fill="#1ea362"/>
-                <path d="m41.4 6.45 22.35 38.7h-44.7L41.4 6.45z" fill="#4285f4"/>
-                <path d="M76.2 66.85 53.85 28.15 31.5 66.85h44.7z" fill="#fbbc04"/>
-              </svg>
+              <DocIntelLogo size={20} />
               <span className="text-base font-semibold text-[#1a1a2e] dark:text-white">DocIntel</span>
             </div>
           </div>
@@ -209,12 +213,12 @@ export function Login({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-[#5f6368] dark:text-[#9aa0a6] mb-1.5 uppercase tracking-wider">
-                Username
+                Email
               </label>
               <input
-                type="text" required autoComplete="username"
-                value={username} onChange={e => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                type="email" required autoComplete="email"
+                value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="Enter your email address"
                 className="input-field"
               />
             </div>
@@ -298,7 +302,7 @@ export function Login({
 
             <button
               type="submit"
-              disabled={isLoading || !username.trim() || !password.trim() || (!isLogin && password !== confirmPw)}
+              disabled={isLoading || !email.trim() || !password.trim() || (!isLogin && password !== confirmPw)}
               className="btn-primary w-full h-11 mt-2"
             >
               {isLoading

@@ -5,10 +5,11 @@ import {
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { DocIntelLogo } from './LandingPage';
+import { supabase } from '../lib/supabaseClient';
 
 export function Sidebar({
   currentView, setCurrentView, storage, onUpload,
-  onFolderCreate, currentFolderId, token, onUpgrade, isOpen, onClose
+  onFolderCreate, currentFolderId, token, user, onUpgrade, isOpen, onClose
 }: any) {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
@@ -35,16 +36,18 @@ export function Sidebar({
     if (!newFolderName.trim()) return;
     setFolderLoading(true);
     try {
-      const res = await fetch('/api/folders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: newFolderName, parentId: currentFolderId }),
+      const { error } = await supabase.from('folders').insert({
+        name: newFolderName,
+        parent_id: currentFolderId || null,
+        owner_id: user.id
       });
-      if (res.ok) {
+      if (!error) {
         toast.success('Folder created');
         setNewFolderName(''); setIsCreateFolderOpen(false);
         onFolderCreate();
-      } else toast.error('Failed to create folder');
+      } else {
+        toast.error('Failed to create folder');
+      }
     } catch { toast.error('Failed to create folder'); }
     finally { setFolderLoading(false); }
   };

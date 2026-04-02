@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { supabase } from '../lib/supabaseClient';
 
 // ─── Parsing Status Badge ────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
@@ -57,14 +58,9 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
       let updated = false;
       for (const f of pending) {
         try {
-          const res = await fetch(`/api/files/${f.id}/status`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const statusData = await res.json();
-            if (statusData.parsing_status !== f.parsing_status) {
-              updated = true;
-            }
+          const { data, error } = await supabase.from('files').select('parsing_status').eq('id', f.id).single();
+          if (!error && data && data.parsing_status !== f.parsing_status) {
+            updated = true;
           }
         } catch { /* ignore */ }
       }
@@ -201,16 +197,21 @@ function FolderCard({ folder, isTrash, refresh, onClick, token, viewMode, user }
     e.stopPropagation();
     setMenuOpen(false);
     try {
-      let url = '';
-      let method = 'PUT';
-      if (action === 'trash') url = `/api/folders/${folder.id}/trash`;
-      if (action === 'restore') url = `/api/folders/${folder.id}/restore`;
-      if (action === 'delete') { url = `/api/folders/${folder.id}`; method = 'DELETE'; }
+      let error = null;
+      if (action === 'trash') {
+        const { error: err } = await supabase.from('folders').update({ trashed_at: new Date().toISOString() }).eq('id', folder.id);
+        error = err;
+      } else if (action === 'restore') {
+        const { error: err } = await supabase.from('folders').update({ trashed_at: null }).eq('id', folder.id);
+        error = err;
+      } else if (action === 'delete') {
+        const { error: err } = await supabase.from('folders').delete().eq('id', folder.id);
+        error = err;
+      }
 
-      const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) { toast.success(`Folder ${action}ed`); refresh(); }
+      if (!error) { toast.success(`Folder ${action}ed`); refresh(); }
       else toast.error(`Failed to ${action} folder`);
-    } catch (e) {
+    } catch {
       toast.error(`Failed to ${action} folder`);
     }
   };
@@ -292,20 +293,31 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
     e.stopPropagation();
     setMenuOpen(false);
     if (action === 'download') {
-      window.open(`/api/files/${file.id}/download`, '_blank');
+      const { data, error } = await supabase.storage.from('uploads').createSignedUrl(file.storage_path || file.storagePath, 60);
+      if (data?.signedUrl) {
+         window.open(data.signedUrl, '_blank');
+      } else {
+         toast.error('Failed to generate download link');
+      }
       return;
     }
+    
     try {
-      let url = '';
-      let method = 'PUT';
-      if (action === 'trash') url = `/api/files/${file.id}/trash`;
-      if (action === 'restore') url = `/api/files/${file.id}/restore`;
-      if (action === 'delete') { url = `/api/files/${file.id}`; method = 'DELETE'; }
+      let error = null;
+      if (action === 'trash') {
+        const { error: err } = await supabase.from('files').update({ trashed_at: new Date().toISOString() }).eq('id', file.id);
+        error = err;
+      } else if (action === 'restore') {
+        const { error: err } = await supabase.from('files').update({ trashed_at: null }).eq('id', file.id);
+        error = err;
+      } else if (action === 'delete') {
+        const { error: err } = await supabase.from('files').delete().eq('id', file.id);
+        error = err;
+      }
 
-      const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) { toast.success(`File ${action}ed`); refresh(); }
+      if (!error) { toast.success(`File ${action}ed`); refresh(); }
       else toast.error(`Failed to ${action} file`);
-    } catch (e) {
+    } catch {
       toast.error(`Failed to ${action} file`);
     }
   };

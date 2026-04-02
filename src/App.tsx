@@ -14,6 +14,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { StorageModal } from './components/StorageModal';
 import { ParsedContentModal } from './components/ParsedContentModal';
 import { Toaster, toast } from 'sonner';
+import { supabase } from './lib/supabaseClient';
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -57,12 +58,17 @@ export default function App() {
 
   const fetchMe = async () => {
     try {
-      const res = await fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
+      const { data: { user: authUser }, error } = await supabase.auth.getUser(token!);
+      if (error || !authUser) throw error;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+        
+      if (profile) {
+        setUser({ ...profile, email: authUser.email });
         fetchDrive();
       } else {
         handleLogout();
@@ -78,34 +84,49 @@ export default function App() {
     setUser(userData);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
   };
 
   const fetchDrive = async () => {
-    if (!token) return;
+    if (!token || !user) return;
     setIsLoading(true);
     try {
-      const url = new URL('/api/drive', window.location.origin);
-      url.searchParams.append('trash', (currentView === 'trash').toString());
-      if (currentFolderId && currentView !== 'trash') {
-        url.searchParams.append('folderId', currentFolderId);
+      // Build queries based on view state
+      let filesQuery = supabase.from('files').select('*');
+      let foldersQuery = supabase.from('folders').select('*');
+
+      if (currentView === 'trash') {
+        filesQuery = filesQuery.not('trashed_at', 'is', null);
+        foldersQuery = foldersQuery.not('trashed_at', 'is', null);
+      } else {
+        filesQuery = filesQuery.is('trashed_at', null);
+        foldersQuery = foldersQuery.is('trashed_at', null);
+        
+        if (currentFolderId) {
+          filesQuery = filesQuery.eq('folder_id', currentFolderId);
+          foldersQuery = foldersQuery.eq('parent_id', currentFolderId);
+        } else {
+          filesQuery = filesQuery.is('folder_id', null);
+          foldersQuery = foldersQuery.is('parent_id', null);
+        }
       }
 
-      const res = await fetch(url.toString(), {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setFiles(data.files || []);
-      setFolders(data.folders || []);
+      const [filesRes, foldersRes] = await Promise.all([
+        filesQuery.order('created_at', { ascending: false }),
+        foldersQuery.order('created_at', { ascending: false })
+      ]);
+
+      setFiles(filesRes.data || []);
+      setFolders(foldersRes.data || []);
       
-      const storageRes = await fetch('/api/storage', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const storageData = await storageRes.json();
-      setStorage(storageData);
+      // Calculate active storage manually from all active files for user
+      const { data: allFiles } = await supabase.from('files').select('size').is('trashed_at', null);
+      const usedStorage = (allFiles || []).reduce((acc: number, f: any) => acc + (f.size || 0), 0);
+      setStorage({ used: usedStorage, limit: user.storage_limit || (1 * 1024 * 1024 * 1024) });
     } catch (error) {
       console.error('Error fetching drive:', error);
     } finally {
@@ -118,35 +139,45 @@ export default function App() {
   }, [currentView, currentFolderId, token]);
 
   const handleUpload = async (file: File) => {
-    if (!file || !token) return;
-
+    if (!file || !token || !user) return;
     toast.loading(`Uploading ${file.name}...`, { id: 'upload' });
-
-    const formData = new FormData();
-    formData.append('file', file);
-    if (currentFolderId) {
-      formData.append('folderId', currentFolderId);
-    }
-
     try {
-      const res = await fetch('/api/upload', {
+      // 1. Direct upload to Supabase to bypass Vercel 4.5MB payload limit
+      const filePath = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Notify backend to track in DB and begin parsing queue
+      const res = await fetch('/api/upload-webhook', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({
+          originalName: file.name,
+          mimeType: file.type,
+          size: file.size,
+          storagePath: uploadData.path,
+          folderId: currentFolderId || null
+        }),
       });
 
       if (res.ok) {
         fetchDrive();
         toast.success(`${file.name} uploaded — parsing in background…`, { id: 'upload' });
       } else {
-        const data = await res.json();
-        toast.error(data.error || `Failed to upload ${file.name}`, { id: 'upload' });
+        const err = await res.json();
+        toast.error(`Upload failed: ${err.error}`, { id: 'upload' });
       }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error(`Failed to upload ${file.name}`, { id: 'upload' });
+    } catch (err: any) {
+      toast.error(`Upload failed: ${err.message}`, { id: 'upload' });
     }
   };
+
 
 
   if (!token) {
