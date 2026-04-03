@@ -36,7 +36,15 @@ export function Login({
       if (isLogin) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        const user = { id: data.user.id, username: email.split('@')[0], role: 'admin' };
+        // Load profile from Supabase
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+        const user = {
+          id: data.user.id,
+          username: profile?.username || email.split('@')[0],
+          role: profile?.role || 'admin',
+          email: data.user.email,
+          storage_limit: profile?.storage_limit || 1073741824
+        };
         onLogin(data.session.access_token, user);
         toast.success('Welcome back!');
       } else {
@@ -46,7 +54,16 @@ export function Login({
         });
         if (error) throw error;
         if (data.session) {
-          const user = { id: data.user.id, username: email.split('@')[0], role: 'admin' };
+          // Profile is created by trigger, give it a moment
+          await new Promise(r => setTimeout(r, 500));
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user!.id).single();
+          const user = {
+            id: data.user!.id,
+            username: profile?.username || email.split('@')[0],
+            role: profile?.role || 'admin',
+            email: data.user!.email,
+            storage_limit: profile?.storage_limit || 1073741824
+          };
           onLogin(data.session.access_token, user);
           toast.success('Account created — welcome to DocIntel!');
         } else {

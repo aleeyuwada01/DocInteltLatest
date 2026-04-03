@@ -33,23 +33,42 @@ export function Sidebar({
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFolderName.trim()) return;
+    if (!newFolderName.trim() || !user?.id) return;
     setFolderLoading(true);
     try {
-      const { error } = await supabase.from('folders').insert({
-        name: newFolderName,
-        parent_id: currentFolderId || null,
-        owner_id: user.id
-      });
-      if (!error) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expired. Please sign in again.');
+        setFolderLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('folders')
+        .insert({
+          name: newFolderName.trim(),
+          parent_id: currentFolderId || null,
+          owner_id: session.user.id
+        })
+        .select();
+
+      if (error) {
+        console.error('Folder creation error:', error);
+        toast.error(`Failed to create folder: ${error.message}`);
+      } else if (data && data.length > 0) {
         toast.success('Folder created');
-        setNewFolderName(''); setIsCreateFolderOpen(false);
+        setNewFolderName(''); 
+        setIsCreateFolderOpen(false);
         onFolderCreate();
       } else {
-        toast.error('Failed to create folder');
+        toast.error('Folder creation blocked by database policy.');
       }
-    } catch { toast.error('Failed to create folder'); }
-    finally { setFolderLoading(false); }
+    } catch (err: any) { 
+      console.error('[FolderCreate] Exception:', err);
+      toast.error(`Failed to create folder: ${err.message}`); 
+    } finally { 
+      setFolderLoading(false); 
+    }
   };
 
   return (
@@ -198,7 +217,7 @@ export function Sidebar({
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setIsCreateFolderOpen(false)} className="btn-ghost">Cancel</button>
                 <button type="submit" disabled={!newFolderName.trim() || folderLoading} className="btn-primary">
-                  Create
+                  {folderLoading ? 'Creating…' : 'Create'}
                 </button>
               </div>
             </form>

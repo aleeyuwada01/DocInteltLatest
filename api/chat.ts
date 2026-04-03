@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../src/lib/supabaseAdmin.js';
+import { supabaseAdmin, createUserClient } from '../src/lib/supabaseAdmin.js';
 import { GoogleGenAI } from '@google/genai';
 
-export const maxDuration = 60; // Max allowed for Vercel Hobby
+export const maxDuration = 60;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
 
   const { query, context } = req.body;
-  if (!query) return res.status(400).json({ error: 'Query is REQUIRED' });
+  if (!query) return res.status(400).json({ error: 'Query is required' });
 
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.json({ reply: response.text });
   } catch (error: any) {
-    console.error('Chat error:', error);
+    console.error('[Chat API] Error:', error);
     res.status(500).json({ error: 'Chat completion failed', details: error.message });
   }
 }

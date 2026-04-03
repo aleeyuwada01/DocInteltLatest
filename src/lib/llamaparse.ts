@@ -28,10 +28,10 @@ function sleep(ms: number) {
  * Upload file and start parsing via v2 multipart endpoint.
  * Returns the job ID for polling.
  */
-async function uploadAndParse(filePath: string): Promise<string> {
+async function uploadAndParse(filePath: string, mimeType?: string): Promise<string> {
   const fileName = path.basename(filePath);
   const fileBuffer = fs.readFileSync(filePath);
-  const blob = new Blob([fileBuffer]);
+  const blob = new Blob([fileBuffer], { type: mimeType || 'application/octet-stream' });
 
   const configuration = JSON.stringify({
     tier: PARSE_TIER,
@@ -142,19 +142,19 @@ async function pollForResult(jobId: string, maxWait = 600_000): Promise<ParseRes
  * Main entry point: parse a document using LlamaParse v2.
  * Retries up to 3 times with exponential backoff between attempts.
  */
-export async function parseDocument(filePath: string, _mimeType?: string): Promise<ParseResult> {
-  if (!LLAMA_API_KEY) {
-    throw new Error('LLAMA_CLOUD_API_KEY is not set in environment');
-  }
-
-  const maxAttempts = 3;
-  let lastError: Error | null = null;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`[LlamaParse v2] Attempt ${attempt}: parsing ${path.basename(filePath)}`);
-      const jobId = await uploadAndParse(filePath);
-      const result = await pollForResult(jobId);
+  export async function parseDocument(filePath: string, mimeType?: string): Promise<ParseResult> {
+    if (!LLAMA_API_KEY) {
+      throw new Error('LLAMA_CLOUD_API_KEY is not set in environment');
+    }
+  
+    const maxAttempts = 3;
+    let lastError: Error | null = null;
+  
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        console.log(`[LlamaParse v2] Attempt ${attempt}: parsing ${path.basename(filePath)}`);
+        const jobId = await uploadAndParse(filePath, mimeType);
+        const result = await pollForResult(jobId);
 
       if (!result.markdown && !result.text) {
         throw new Error('LlamaParse returned empty content');

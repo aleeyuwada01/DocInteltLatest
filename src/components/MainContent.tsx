@@ -216,9 +216,10 @@ function FolderCard({ folder, isTrash, refresh, onClick, token, viewMode, user }
     }
   };
 
-  const date = new Date(folder.createdAt);
+  // Use camelCase field names (mapped in App.tsx)
+  const date = new Date(folder.createdAt || folder.created_at);
   const formattedDate = isNaN(date.getTime()) ? 'Unknown date' : format(date, 'MMM d, yyyy');
-  const isOwner = folder.ownerId === user?.id;
+  const isOwner = (folder.ownerId || folder.owner_id) === user?.id;
 
   const menuItems = isTrash ? (
     <>
@@ -266,10 +267,15 @@ function FolderCard({ folder, isTrash, refresh, onClick, token, viewMode, user }
 // ─── File Card ───────────────────────────────────────────────────────────────
 function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
-  const isImage = file.mimeType?.startsWith('image/');
-  const isVideo = file.mimeType?.startsWith('video/');
-  const isPdf = file.mimeType === 'application/pdf';
+  const mimeType = file.mimeType || file.mime_type || '';
+  const originalName = file.originalName || file.original_name || 'Unknown';
+  const storagePath = file.storagePath || file.storage_path || '';
+
+  const isImage = mimeType.startsWith('image/');
+  const isVideo = mimeType.startsWith('video/');
+  const isPdf = mimeType === 'application/pdf';
 
   let Icon = FileIcon;
   let iconColor = 'text-gray-500 dark:text-gray-400';
@@ -278,8 +284,17 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
   else if (isPdf) { Icon = FileText; iconColor = 'text-red-500 dark:text-red-400'; }
   else { Icon = FileText; iconColor = 'text-blue-500 dark:text-blue-400'; }
 
-  const date = new Date(file.createdAt);
+  const date = new Date(file.createdAt || file.created_at);
   const formattedDate = isNaN(date.getTime()) ? 'Unknown date' : format(date, 'MMM d, yyyy');
+
+  // Load thumbnail for images
+  useEffect(() => {
+    if (isImage && storagePath) {
+      supabase.storage.from('uploads').createSignedUrl(storagePath, 300).then(({ data }) => {
+        if (data?.signedUrl) setThumbnailUrl(data.signedUrl);
+      });
+    }
+  }, [isImage, storagePath]);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -293,7 +308,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
     e.stopPropagation();
     setMenuOpen(false);
     if (action === 'download') {
-      const { data, error } = await supabase.storage.from('uploads').createSignedUrl(file.storage_path || file.storagePath, 60);
+      const { data, error } = await supabase.storage.from('uploads').createSignedUrl(storagePath, 60);
       if (data?.signedUrl) {
          window.open(data.signedUrl, '_blank');
       } else {
@@ -311,6 +326,10 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
         const { error: err } = await supabase.from('files').update({ trashed_at: null }).eq('id', file.id);
         error = err;
       } else if (action === 'delete') {
+        // Also delete from storage
+        if (storagePath) {
+          await supabase.storage.from('uploads').remove([storagePath]);
+        }
         const { error: err } = await supabase.from('files').delete().eq('id', file.id);
         error = err;
       }
@@ -345,7 +364,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
         <div onClick={handleCardClick} className="relative flex items-center px-3 py-2 bg-white dark:bg-[#1e1f20] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] border-b border-gray-100 dark:border-gray-800/50 cursor-pointer transition-colors group">
           <div className="flex-1 flex items-center gap-3 min-w-0">
             <Icon className={`w-5 h-5 ${iconColor} opacity-70 shrink-0`} />
-            <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] truncate">{file.originalName}</span>
+            <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] truncate">{originalName}</span>
           </div>
           <div className="w-28 hidden sm:block"><StatusBadge status={file.parsing_status} /></div>
           <div className="w-32 text-sm text-gray-500 dark:text-gray-400 hidden md:block truncate">{formattedDate}</div>
@@ -366,7 +385,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
       <div onClick={handleCardClick} className="relative flex flex-col bg-[#f8fafd] dark:bg-[#282a2c] border border-gray-200/50 dark:border-gray-800/50 rounded-2xl p-1.5 hover:bg-white dark:hover:bg-[#37393b] hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-0.5 dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] cursor-pointer transition-all duration-300 group">
         <div className="flex items-center gap-3 p-2 flex-1 min-w-0">
           <Icon className={`w-5 h-5 ${iconColor} opacity-70 shrink-0`} />
-          <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] truncate flex-1">{file.originalName}</span>
+          <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] truncate flex-1">{originalName}</span>
           <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-[#444746] p-1 rounded-full hover:bg-[#e1e5ea] dark:hover:bg-[#4a4c4f] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -386,8 +405,8 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
         )}
 
         <div className="h-36 mx-1.5 mb-1.5 bg-white dark:bg-[#1e1f20] rounded-xl border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center relative overflow-hidden shrink-0 group-hover:border-blue-200 dark:group-hover:border-blue-900/50 transition-colors">
-          {isImage ? (
-            <img src={`/api/files/${file.id}/download`} alt={file.originalName} className="object-cover w-full h-full" />
+          {isImage && thumbnailUrl ? (
+            <img src={thumbnailUrl} alt={originalName} className="object-cover w-full h-full" />
           ) : (
             <Icon className={`w-12 h-12 ${iconColor} opacity-20`} />
           )}
