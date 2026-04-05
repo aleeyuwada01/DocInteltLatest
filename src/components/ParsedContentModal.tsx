@@ -17,7 +17,9 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
 
   useEffect(() => {
     if (!file) return;
-    const fetchParsed = async () => {
+    let cancelled = false;
+
+    const fetchParsed = async (attempt = 1) => {
       try {
         const { data: fileData, error } = await supabase
           .from('files')
@@ -25,16 +27,23 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
           .eq('id', file.id)
           .single();
         
-        if (!error && fileData) {
+        if (!cancelled && !error && fileData) {
           setData(fileData);
+        } else if (!cancelled && !fileData && attempt === 1) {
+          // RLS may have blocked the query due to a stale session — retry once
+          console.warn('[ParsedContent] First fetch returned null, retrying in 1.5s...');
+          await new Promise(r => setTimeout(r, 1500));
+          if (!cancelled) return fetchParsed(2);
         }
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     fetchParsed();
+    return () => { cancelled = true; };
   }, [file, token]);
 
   if (!file) return null;

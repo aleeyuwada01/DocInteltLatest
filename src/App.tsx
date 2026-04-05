@@ -21,6 +21,8 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [files, setFiles] = useState<any[]>([]);
   const [folders, setFolders] = useState<any[]>([]);
+  (window as any).__FILES = files;
+  (window as any).__FOLDERS = folders;
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState('drive');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -46,25 +48,32 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // ── Auth State Listener ────────────────────────────────────────────────────
+  // ── Clear old auth storage key (one-time migration) ─────────────────────
+  // Previous config used a custom storageKey 'docintel-auth-v2' which is now
+  // replaced by the default Supabase key. Clean up to avoid orphaned sessions.
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (s) {
-        loadProfile(s);
-      } else {
-        setIsLoading(false);
-      }
-    });
+    localStorage.removeItem('docintel-auth-v2');
+  }, []);
 
-    // Listen for auth changes
+  // ── Auth State Listener (follows Supabase recommended pattern) ──────────
+  // ORDER MATTERS: 1) Register listener FIRST, 2) THEN check getSession()
+  useEffect(() => {
+    // STEP 1: Set up the listener FIRST (catches SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, s) => {
+      (event, s) => {
+        console.log('[Auth] onAuthStateChange:', event, s ? 'session present' : 'no session');
+
+        // Update session state for every event that carries a session
         setSession(s);
-        if (s) {
-          await loadProfile(s);
-        } else {
+
+        if (s?.user) {
+          // Defer DB queries to avoid Supabase client deadlocks
+          // (making another Supabase call inside onAuthStateChange can deadlock)
+          setTimeout(() => {
+            loadProfile(s);
+          }, 0);
+        } else if (event === 'SIGNED_OUT') {
+          // Only wipe app state on explicit sign out — never on TOKEN_REFRESHED or transient nulls
           setUser(null);
           setFiles([]);
           setFolders([]);
@@ -73,32 +82,54 @@ export default function App() {
       }
     );
 
+    // STEP 2: THEN check for existing session in localStorage
+    // This reads stored tokens, validates/refreshes them, and restores the session
+    supabase.auth.getSession().then(
+      ({ data: { session } }) => {
+        console.log('[Auth] getSession():', session ? 'restored' : 'none');
+        setSession(session);
+        if (session?.user) {
+          loadProfile(session);
+        } else {
+          setIsLoading(false);
+        }
+      }
+    );
+
+    // STEP 3: Cleanup on unmount
     return () => subscription.unsubscribe();
   }, []);
 
   const loadProfile = async (s: any) => {
     try {
-      const { data: profile } = await supabase
+      if (!s?.user?.id) {
+        console.warn('[Auth] loadProfile called without user ID — skipping');
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', s.user.id)
+        .eq('id', s?.user?.id || '')
         .single();
+
+      console.log('[Auth] Profile load:', profile ? 'found' : 'not found', profileError?.message || '');
         
       if (profile) {
-        setUser({ ...profile, email: s.user.email });
+        setUser({ ...profile, email: s?.user?.email });
       } else {
-        setUser({ id: s.user.id, email: s.user.email, username: s.user.email?.split('@')[0], role: 'admin' });
+        setUser({ id: s?.user?.id, email: s?.user?.email, username: s?.user?.email?.split('@')[0], role: 'admin' });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error loading profile:', e);
-      setUser({ id: s.user.id, email: s.user.email, username: s.user.email?.split('@')[0], role: 'admin' });
+      setUser({ id: s?.user?.id, email: s?.user?.email, username: s?.user?.email?.split('@')[0], role: 'admin' });
     } finally {
-      setIsLoading(false); // Ensure initial UI loader is cleared when profile completes
+      setIsLoading(false);
     }
   };
 
   const handleLogin = (_token: string, userData: any) => {
-    // Session is now managed by Supabase auth listener above
     setUser(userData);
   };
 
@@ -112,7 +143,12 @@ export default function App() {
   const [isDriveLoading, setIsDriveLoading] = useState(false);
 
   const fetchDrive = async () => {
-    if (!session || !user) return;
+    if (!session || !user) {
+      console.log(`[Drive] Skipping fetch — session: ${!!session}, user: ${!!user}`);
+      return;
+    }
+
+    console.log('[Drive] Fetching drive data...');
     setIsDriveLoading(true);
     try {
       let filesQuery = supabase.from('files').select('*');
@@ -139,18 +175,37 @@ export default function App() {
         foldersQuery.order('created_at', { ascending: false })
       ]);
 
+      console.log(`[Drive] Files: ${filesRes.data?.length ?? 0}, error: ${filesRes.error?.message || 'none'}`);
+      console.log(`[Drive] Folders: ${foldersRes.data?.length ?? 0}, error: ${foldersRes.error?.message || 'none'}`);
+
       if (filesRes.error) console.error('Files error:', filesRes.error);
       if (foldersRes.error) console.error('Folders error:', foldersRes.error);
 
-      setFiles((filesRes.data || []).map(mapFile));
-      setFolders((foldersRes.data || []).map(mapFolder));
+      try {
+        const mappedFiles = (filesRes.data || []).map(mapFile);
+        const mappedFolders = (foldersRes.data || []).map(mapFolder);
+        
+        console.log(`[Drive] mappedFiles: ${mappedFiles.length}`);
+        console.log(`[Drive] mappedFolders: ${mappedFolders.length}`);
+
+        setFiles(mappedFiles);
+        setFolders(mappedFolders);
+      } catch (err: any) {
+        toast.error(`Mapping Error: ${err.message}`, { duration: Infinity });
+        console.error(`MAPPING ERROR: ${err.message}`);
+      }
       
       // Calculate storage
-      const { data: allFiles } = await supabase.from('files').select('size').is('trashed_at', null);
-      const usedStorage = (allFiles || []).reduce((acc: number, f: any) => acc + (f.size || 0), 0);
-      setStorage({ used: usedStorage, limit: user.storage_limit || (1 * 1024 * 1024 * 1024) });
-    } catch (error) {
-      console.error('Error fetching drive:', error);
+      try {
+        const { data: allFiles } = await supabase.from('files').select('size').is('trashed_at', null);
+        const usedStorage = (allFiles || []).reduce((acc: number, f: any) => acc + (f.size || 0), 0);
+        setStorage({ used: usedStorage, limit: user.storage_limit || (1 * 1024 * 1024 * 1024) });
+      } catch (err: any) {
+         console.error('Storage Error:', err);
+      }
+    } catch (error: any) {
+      toast.error(`Fetch error: ${error.message}`, { duration: Infinity });
+      console.error(`Fetch error: ${error.message}`);
     } finally {
       setIsDriveLoading(false);
     }

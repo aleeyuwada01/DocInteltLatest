@@ -3,7 +3,15 @@
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/files/:id/parsed",
+      "destination": "/api/files/[id]/parsed"
+    },
+    {
+      "source": "/api/files/:id/download",
+      "destination": "/api/files/[id]/download"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],

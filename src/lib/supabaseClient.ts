@@ -9,11 +9,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    storageKey: 'docintel-auth-token',
-    flowType: 'implicit',
+    storage: localStorage,          // WHERE tokens are stored — survives page refresh
+    persistSession: true,           // ENABLE persistence to localStorage
+    autoRefreshToken: true,         // AUTO-RENEW expired tokens silently
   },
 });
 

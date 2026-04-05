@@ -123,9 +123,39 @@ async function pollForResult(jobId: string, maxWait = 600_000): Promise<ParseRes
     console.log(`[LlamaParse v2] Job ${jobId} status: ${status}`);
 
     if (status === 'COMPLETED' || status === 'SUCCESS') {
-      const markdown = data.markdown || '';
-      const text = data.text || markdown;
-      return { markdown, text, jobId };
+      let markdown = data.markdown_full || data.markdown || '';
+      let text = data.text_full || data.text || '';
+      
+      // Try to parse stringified JSON if the API returned {"pages": [...]} as a string
+      const tryParseStringifiedJson = (str: string, field: string) => {
+        if (typeof str === 'string' && str.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(str);
+            if (parsed.pages && Array.isArray(parsed.pages)) {
+              return parsed.pages.map((p: any) => p[field] || '').join('\n\n');
+            }
+          } catch (e) {
+             // Ignore parse errors, just use the raw string
+          }
+        }
+        return str;
+      };
+
+      markdown = tryParseStringifiedJson(markdown, 'markdown');
+      text = tryParseStringifiedJson(text, 'text');
+
+      if (!markdown && job.pages && Array.isArray(job.pages)) {
+        markdown = job.pages.map((p: any) => p.markdown || '').join('\n\n');
+      }
+      if (!text && job.pages && Array.isArray(job.pages)) {
+        text = job.pages.map((p: any) => p.text || p.markdown || '').join('\n\n');
+      }
+      
+      return { 
+        markdown: markdown || text || '', 
+        text: text || markdown || '', 
+        jobId 
+      };
     }
 
     if (status === 'FAILED' || status === 'CANCELLED' || status === 'ERROR') {

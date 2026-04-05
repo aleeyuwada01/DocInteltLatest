@@ -41,8 +41,7 @@ async function startServer() {
         }
         
         const { pathToFileURL } = await import('url');
-        // Add cache-busting to force fresh module loading in dev
-        const moduleUrl = pathToFileURL(modulePath).href + '?t=' + Date.now();
+        const moduleUrl = pathToFileURL(modulePath).href;
         const { default: handler } = await import(moduleUrl);
         await handler(req, res);
       } catch (importErr: any) {
