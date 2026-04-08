@@ -39,6 +39,8 @@ export function mapFile(row: any): any {
     sharedWith: row.shared_with ?? row.sharedWith,
     createdAt: row.created_at ?? row.createdAt,
     trashedAt: row.trashed_at ?? row.trashedAt,
+    starred_at: row.starred_at,
+    last_opened_at: row.last_opened_at,
   };
 }
 

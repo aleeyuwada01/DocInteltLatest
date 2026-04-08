@@ -14,6 +14,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { StorageModal } from './components/StorageModal';
 import { ParsedContentModal } from './components/ParsedContentModal';
 import { UploadProgress, type UploadItem } from './components/UploadProgress';
+import { CompareModal } from './components/CompareModal';
 import { Toaster, toast } from 'sonner';
 import { supabase, mapFile, mapFolder } from './lib/supabaseClient';
 import * as tus from 'tus-js-client';
@@ -39,6 +40,8 @@ export default function App() {
   const [isStorageOpen, setIsStorageOpen] = useState(false);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
   const [unauthView, setUnauthView] = useState<'landing' | 'auth'>('landing');
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Upload queue
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
@@ -410,8 +413,78 @@ export default function App() {
     setUploadQueue([]);
   };
 
+  // ── Starred toggle ────────────────────────────────────────────────────────
+  const handleToggleStar = async (fileId: string) => {
+    const file = files.find((f: any) => f.id === fileId);
+    if (!file) return;
+    const isStarred = !!file.starred_at;
+    const { error } = await supabase.from('files').update({ starred_at: isStarred ? null : new Date().toISOString() }).eq('id', fileId);
+    if (!error) {
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, starred_at: isStarred ? null : new Date().toISOString() } : f));
+    }
+  };
+
+  // ── Rename file ───────────────────────────────────────────────────────────
+  const handleRenameFile = async (fileId: string, newName: string) => {
+    const { error } = await supabase.from('files').update({ original_name: newName, name: newName }).eq('id', fileId);
+    if (!error) {
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, originalName: newName, original_name: newName, name: newName } : f));
+      toast.success('File renamed');
+    } else {
+      toast.error('Failed to rename');
+    }
+  };
+
+  // ── Move file to folder ───────────────────────────────────────────────────
+  const handleMoveFile = async (fileId: string, folderId: string | null) => {
+    const { error } = await supabase.from('files').update({ folder_id: folderId }).eq('id', fileId);
+    if (!error) {
+      toast.success(folderId ? 'File moved to folder' : 'File moved to root');
+      fetchDrive();
+    } else {
+      toast.error('Failed to move file');
+    }
+  };
+
+  // ── Track last opened for recent files ─────────────────────────────────────
+  const handlePreviewFile = async (fileId: string) => {
+    setPreviewFileId(fileId);
+    // Update last_opened_at in background
+    supabase.from('files').update({ last_opened_at: new Date().toISOString() }).eq('id', fileId).then();
+  };
+
+  // ── Drag and Drop ─────────────────────────────────────────────────────────
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only close if leaving the container entirely
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      handleUpload(droppedFiles);
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const token = session?.access_token || null;
+  // Expose compare opener for sidebar
+  (window as any).__OPEN_COMPARE = () => setIsCompareOpen(true);
 
   if (!session) {
     if (isLoading) {
@@ -472,7 +545,25 @@ export default function App() {
           onPreviewFile={setPreviewFileId}
         />
         
-        <div className="flex-1 overflow-hidden p-2 md:p-4 pt-0 flex flex-row gap-4 min-h-0 relative">
+        <div
+          className={`flex-1 overflow-hidden p-2 md:p-4 pt-0 flex flex-row gap-4 min-h-0 relative transition-all duration-200 ${isDragging ? 'ring-2 ring-[#0b57d0] ring-inset rounded-2xl' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Drag overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-blue-500/10 dark:bg-blue-500/5 backdrop-blur-[1px] rounded-2xl pointer-events-none">
+              <div className="flex flex-col items-center gap-3 p-8 rounded-2xl bg-white/90 dark:bg-[#1e1f20]/90 shadow-xl border-2 border-dashed border-[#0b57d0] dark:border-[#a8c7fa]">
+                <div className="w-14 h-14 rounded-2xl bg-[#0b57d0]/10 dark:bg-[#a8c7fa]/10 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-[#0b57d0] dark:text-[#a8c7fa]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0L8 8m4-4l4 4M4 20h16" /></svg>
+                </div>
+                <p className="text-sm font-semibold text-[#0b57d0] dark:text-[#a8c7fa]">Drop files to upload</p>
+                <p className="text-xs text-[#9aa0a6]">Files will be uploaded to the current folder</p>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 h-full bg-white dark:bg-[#1e1f20] rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-200/50 dark:border-gray-800/50 min-h-0">
             {isDriveLoading ? (
               <div className="flex-1 flex items-center justify-center">
@@ -480,8 +571,8 @@ export default function App() {
               </div>
             ) : (
               <MainContent 
-                files={files} 
-                folders={folders} 
+                files={currentView === 'starred' ? files.filter((f: any) => !!f.starred_at) : currentView === 'recent' ? [...files].sort((a: any, b: any) => new Date(b.last_opened_at || 0).getTime() - new Date(a.last_opened_at || 0).getTime()).slice(0, 30) : files} 
+                folders={currentView === 'starred' || currentView === 'recent' ? [] : folders} 
                 onUpload={handleUpload} 
                 currentView={currentView} 
                 refresh={() => fetchDrive()}
@@ -489,14 +580,19 @@ export default function App() {
                 setCurrentFolderId={setCurrentFolderId}
                 token={token}
                 user={user}
-                onPreviewFile={setPreviewFileId}
-                hasMore={hasMoreFiles || hasMoreFolders}
+                onPreviewFile={handlePreviewFile}
+                hasMore={currentView === 'starred' || currentView === 'recent' ? false : (hasMoreFiles || hasMoreFolders)}
                 totalFileCount={totalFileCount}
                 onLoadMore={() => fetchDrive(true)}
+                onToggleStar={handleToggleStar}
+                onRenameFile={handleRenameFile}
+                onMoveFile={handleMoveFile}
+                allFolders={folders}
+                onCompare={() => setIsCompareOpen(true)}
               />
             )}
           </div>
-          <ChatPanel token={token} user={user} onPreviewFile={setPreviewFileId} />
+          <ChatPanel token={token} user={user} onPreviewFile={handlePreviewFile} />
         </div>
       </div>
 
@@ -510,6 +606,7 @@ export default function App() {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} token={token} user={user} />
       <StorageModal isOpen={isStorageOpen} onClose={() => setIsStorageOpen(false)} token={token} />
+      <CompareModal isOpen={isCompareOpen} onClose={() => setIsCompareOpen(false)} files={files} token={token} />
       {previewFileId && (
         <ParsedContentModal 
           fileId={previewFileId} 

@@ -1,4 +1,4 @@
-import { Folder, FileText, Image as ImageIcon, Video, File as FileIcon, MoreVertical, Trash2, RotateCcw, Trash, ArrowLeft, LayoutGrid, List, X, Loader2, CheckCircle2, AlertCircle, Clock, Download } from 'lucide-react';
+import { Folder, FileText, Image as ImageIcon, Video, File as FileIcon, MoreVertical, Trash2, RotateCcw, Trash, ArrowLeft, LayoutGrid, List, X, Loader2, CheckCircle2, AlertCircle, Clock, Download, Star, Pencil, FolderInput, GitCompareArrows } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useState, useEffect, useCallback } from 'react';
@@ -45,7 +45,7 @@ function StatusBadge({ status }: { status: string }) {
 
 
 // ─── Main Content ────────────────────────────────────────────────────────────
-export function MainContent({ files, folders, onUpload, currentView, refresh, currentFolderId, setCurrentFolderId, token, user, onPreviewFile, hasMore, totalFileCount, onLoadMore }: any) {
+export function MainContent({ files, folders, onUpload, currentView, refresh, currentFolderId, setCurrentFolderId, token, user, onPreviewFile, hasMore, totalFileCount, onLoadMore, onToggleStar, onRenameFile, onMoveFile, allFolders, onCompare }: any) {
   const isTrash = currentView === 'trash';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -83,7 +83,7 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
             </button>
           )}
           <h1 className="text-base sm:text-lg md:text-[22px] font-normal text-[#1f1f1f] dark:text-[#e3e3e3] truncate">
-            {isTrash ? 'Trash' : currentFolderId ? 'Folder Contents' : 'Welcome to DocIntel'}
+            {isTrash ? 'Trash' : currentView === 'starred' ? '⭐ Starred Files' : currentView === 'recent' ? '🕐 Recent Files' : currentFolderId ? 'Folder Contents' : 'Welcome to DocIntel'}
           </h1>
         </div>
 
@@ -184,11 +184,11 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
         )}
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'flex flex-col gap-1'}>
           {files.map((file: any) => (
-            <FileCard key={file.id} file={file} isTrash={isTrash} refresh={refresh} token={token} viewMode={viewMode} user={user} onPreviewFile={onPreviewFile} />
+            <FileCard key={file.id} file={file} isTrash={isTrash} refresh={refresh} token={token} viewMode={viewMode} user={user} onPreviewFile={onPreviewFile} onToggleStar={onToggleStar} onRenameFile={onRenameFile} onMoveFile={onMoveFile} allFolders={allFolders} onCompare={onCompare} />
           ))}
           {files.length === 0 && (
             <div className="col-span-full text-center py-12 text-[#444746] dark:text-[#c4c7c5]">
-              {isTrash ? 'Trash is empty.' : 'No files yet. Upload a document to get started.'}
+              {isTrash ? 'Trash is empty.' : currentView === 'starred' ? 'No starred files yet. Star files to see them here.' : currentView === 'recent' ? 'No recently opened files.' : 'No files yet. Upload a document to get started.'}
             </div>
           )}
         </div>
@@ -285,8 +285,11 @@ function FolderCard({ folder, isTrash, refresh, onClick, token, viewMode, user }
 }
 
 // ─── File Card ───────────────────────────────────────────────────────────────
-function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile }: any) {
+function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile, onToggleStar, onRenameFile, onMoveFile, allFolders, onCompare }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [moveMenuOpen, setMoveMenuOpen] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
   const mimeType = file.mimeType || file.mime_type || '';
@@ -373,8 +376,32 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
     </>
   ) : (
     <>
+      <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onToggleStar?.(file.id); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]">
+        <Star className={`w-4 h-4 ${file.starred_at ? 'fill-amber-400 text-amber-400' : ''}`} /> {file.starred_at ? 'Unstar' : 'Star'}
+      </button>
+      <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setRenameValue(originalName); setRenaming(true); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]">
+        <Pencil className="w-4 h-4" /> Rename
+      </button>
+      <div className="relative">
+        <button onClick={(e) => { e.stopPropagation(); setMoveMenuOpen(!moveMenuOpen); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]">
+          <FolderInput className="w-4 h-4" /> Move to…
+        </button>
+        {moveMenuOpen && (
+          <div className="absolute left-full top-0 ml-1 w-48 max-h-60 overflow-y-auto bg-white dark:bg-[#282a2c] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 py-1">
+            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setMoveMenuOpen(false); onMoveFile?.(file.id, null); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]">
+              <Folder className="w-4 h-4" /> Root (My Drive)
+            </button>
+            {(allFolders || []).map((fld: any) => (
+              <button key={fld.id} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setMoveMenuOpen(false); onMoveFile?.(file.id, fld.id); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b] truncate">
+                <Folder className="w-4 h-4 shrink-0" /> {fld.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]"><Download className="w-4 h-4" /> Download</button>
-      <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]"><Trash2 className="w-4 h-4" /> Move to trash</button>
+      <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+      <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /> Move to trash</button>
     </>
   );
 
@@ -383,6 +410,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
       <>
         <div onClick={handleCardClick} className="relative flex items-center px-3 py-2 bg-white dark:bg-[#1e1f20] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] border-b border-gray-100 dark:border-gray-800/50 cursor-pointer transition-colors group">
           <div className="flex-1 flex items-center gap-3 min-w-0">
+            {file.starred_at && <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />}
             <Icon className={`w-5 h-5 ${iconColor} opacity-70 shrink-0`} />
             <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] truncate">{originalName}</span>
           </div>
@@ -400,10 +428,32 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
     );
   }
 
+  // Rename inline modal
+  if (renaming) {
+    return (
+      <div className="relative flex flex-col bg-[#f8fafd] dark:bg-[#282a2c] border-2 border-[#0b57d0] dark:border-[#a8c7fa] rounded-2xl p-3">
+        <form onSubmit={(e) => { e.preventDefault(); onRenameFile?.(file.id, renameValue); setRenaming(false); }} className="flex flex-col gap-2">
+          <label className="text-[10px] font-bold text-[#9aa0a6] uppercase tracking-wider">Rename File</label>
+          <input
+            autoFocus
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value)}
+            className="w-full bg-white dark:bg-[#1e1f20] border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-[#1f1f1f] dark:text-[#e3e3e3] focus:outline-none focus:ring-2 focus:ring-[#0b57d0]/30"
+          />
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 py-1.5 text-xs font-semibold bg-[#0b57d0] text-white rounded-lg hover:bg-[#0842a0]">Save</button>
+            <button type="button" onClick={() => setRenaming(false)} className="flex-1 py-1.5 text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <>
       <div onClick={handleCardClick} className="relative flex flex-col bg-[#f8fafd] dark:bg-[#282a2c] border border-gray-200/50 dark:border-gray-800/50 rounded-2xl p-1.5 hover:bg-white dark:hover:bg-[#37393b] hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-0.5 dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.2)] cursor-pointer transition-all duration-300 group">
-        <div className="flex items-center gap-3 p-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2 p-2 flex-1 min-w-0">
+          {file.starred_at && <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />}
           <Icon className={`w-5 h-5 ${iconColor} opacity-70 shrink-0`} />
           <span className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] truncate flex-1">{originalName}</span>
           <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-[#444746] p-1 rounded-full hover:bg-[#e1e5ea] dark:hover:bg-[#4a4c4f] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">

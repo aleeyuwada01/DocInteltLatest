@@ -1,6 +1,7 @@
 import {
   HardDrive, Trash2, Cloud, Plus, FolderPlus, FileUp, X,
-  ChevronRight, UploadCloud, Settings, Moon, Sun, Files, FolderUp
+  ChevronRight, UploadCloud, Settings, Moon, Sun, Files, FolderUp,
+  Star, Clock, GitCompareArrows
 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -186,6 +187,24 @@ export function Sidebar({
               label="My Drive"
               active={currentView === 'drive'}
               onClick={() => setCurrentView('drive')}
+            />
+            <NavItem
+              icon={<Star size={16} />}
+              label="Starred"
+              active={currentView === 'starred'}
+              onClick={() => setCurrentView('starred')}
+            />
+            <NavItem
+              icon={<Clock size={16} />}
+              label="Recent"
+              active={currentView === 'recent'}
+              onClick={() => setCurrentView('recent')}
+            />
+            <NavItem
+              icon={<GitCompareArrows size={16} />}
+              label="Compare Docs"
+              active={false}
+              onClick={() => { (window as any).__OPEN_COMPARE?.(); onClose(); }}
             />
             <NavItem
               icon={<Trash2 size={16} />}

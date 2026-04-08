@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   X, Plus, Users, Trash2, Shield, Bell, Palette, Database,
-  Copy, Check, Eye, EyeOff, Loader2,
+  Copy, Check, Eye, EyeOff, Loader2, ChevronRight, Key,
   Info, AlertTriangle, User, Lock, Globe, Zap, CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Tab = 'account' | 'departments' | 'security' | 'notifications' | 'appearance';
+type Tab = 'account' | 'departments' | 'security' | 'notifications' | 'appearance' | 'api';
 
 const TABS: { id: Tab; icon: React.ReactNode; label: string; adminOnly?: boolean }[] = [
   { id: 'account',       icon: <User className="w-4 h-4" />,        label: 'Account' },
@@ -68,12 +68,12 @@ export function SettingsModal({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ username: newUsername, password: newPassword }),
       });
+      const d = await res.json();
       if (res.ok) {
-        toast.success('Department created successfully');
+        toast.success(`Department "${newUsername}" created! Login email: ${d.email}`, { duration: 8000 });
         setNewUsername(''); setNewPassword('');
         fetchDepartments();
       } else {
-        const d = await res.json();
         toast.error(d.error || 'Failed to create department');
       }
     } catch { toast.error('An error occurred'); }
