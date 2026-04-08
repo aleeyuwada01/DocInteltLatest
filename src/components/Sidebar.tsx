@@ -221,7 +221,7 @@ export function Sidebar({
               <Cloud className="w-4 h-4 text-[#5f6368] dark:text-[#9aa0a6]" />
               <span className="text-xs font-semibold text-[#5f6368] dark:text-[#9aa0a6] uppercase tracking-wider">Storage</span>
             </div>
-            <span className="text-[11px] text-[#9aa0a6] font-medium">{Math.round(pct)}%</span>
+            <span className="text-[11px] text-[#9aa0a6] font-medium">{pct < 1 && pct > 0 ? pct.toFixed(1) : Math.round(pct)}%</span>
           </div>
 
           {/* Bar */}
