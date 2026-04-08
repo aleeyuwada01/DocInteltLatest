@@ -216,18 +216,18 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
   return (
     <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm md:p-4 animate-in fade-in duration-200" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#1e1f20] rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-6xl h-[95vh] md:max-h-[90vh] flex flex-col md:flex-row border border-gray-200/50 dark:border-gray-700/50 overflow-hidden animate-in slide-in-from-bottom md:zoom-in-95 duration-200 relative"
+        className="bg-white dark:bg-[#1e1f20] rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] md:max-h-[90vh] flex flex-col border border-gray-200/50 dark:border-gray-700/50 overflow-hidden animate-in slide-in-from-bottom md:zoom-in-95 duration-200 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Mobile Header (sticky top bar) ── */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1e1f20] shrink-0 z-10">
+        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1e1f20] shrink-0 z-10" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <div className={`p-1.5 rounded-lg bg-gradient-to-br ${accentGradient} shrink-0`}>
               <Icon className={`w-4 h-4 ${iconColor}`} />
             </div>
             <h2 className="text-sm font-semibold text-[#1f1f1f] dark:text-[#e3e3e3] truncate">{originalName}</h2>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-[#282a2c] text-gray-400 hover:text-gray-700 dark:hover:text-white transition-all shrink-0 ml-2">
+          <button onClick={onClose} className="p-2 -mr-1 rounded-xl bg-gray-100 dark:bg-[#282a2c] hover:bg-gray-200 dark:hover:bg-[#37393b] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white transition-all shrink-0 ml-2">
             <X className="w-5 h-5" />
           </button>
         </div>
