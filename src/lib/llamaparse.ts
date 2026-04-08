@@ -25,6 +25,58 @@ function sleep(ms: number) {
 }
 
 /**
+ * Robustly extract text content from LlamaParse responses.
+ * Handles: raw strings, stringified JSON with pages array, 
+ * objects with pages array, and nested structures.
+ */
+function extractContent(raw: any, field: 'markdown' | 'text'): string {
+  if (!raw) return '';
+  
+  // If it's an array of pages directly
+  if (Array.isArray(raw)) {
+    return raw.map((p: any) => p[field] || p.markdown || p.text || '').filter(Boolean).join('\n\n');
+  }
+  
+  // If it's a string, check if it's JSON
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    // Try to parse as JSON if it looks like JSON
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        // { "pages": [...] }
+        if (parsed.pages && Array.isArray(parsed.pages)) {
+          const extracted = parsed.pages
+            .map((p: any) => p[field] || p.markdown || p.text || '')
+            .filter(Boolean)
+            .join('\n\n');
+          return extracted || trimmed;
+        }
+        // Direct array
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((p: any) => p[field] || p.markdown || p.text || '')
+            .filter(Boolean)
+            .join('\n\n');
+        }
+        // Single object with the field
+        if (parsed[field]) return parsed[field];
+      } catch {
+        // Not valid JSON — use as raw string
+      }
+    }
+    return trimmed;
+  }
+  
+  // If it's an object with pages
+  if (typeof raw === 'object' && raw.pages && Array.isArray(raw.pages)) {
+    return raw.pages.map((p: any) => p[field] || p.markdown || p.text || '').filter(Boolean).join('\n\n');
+  }
+  
+  return String(raw);
+}
+
+/**
  * Upload file and start parsing via v2 multipart endpoint.
  * Returns the job ID for polling.
  */
@@ -123,33 +175,31 @@ async function pollForResult(jobId: string, maxWait = 600_000): Promise<ParseRes
     console.log(`[LlamaParse v2] Job ${jobId} status: ${status}`);
 
     if (status === 'COMPLETED' || status === 'SUCCESS') {
-      let markdown = data.markdown_full || data.markdown || '';
-      let text = data.text_full || data.text || '';
-      
-      // Try to parse stringified JSON if the API returned {"pages": [...]} as a string
-      const tryParseStringifiedJson = (str: string, field: string) => {
-        if (typeof str === 'string' && str.trim().startsWith('{')) {
-          try {
-            const parsed = JSON.parse(str);
-            if (parsed.pages && Array.isArray(parsed.pages)) {
-              return parsed.pages.map((p: any) => p[field] || '').join('\n\n');
-            }
-          } catch (e) {
-             // Ignore parse errors, just use the raw string
-          }
-        }
-        return str;
-      };
+      // Use the robust extractContent helper for all sources
+      let markdown = '';
+      let text = '';
 
-      markdown = tryParseStringifiedJson(markdown, 'markdown');
-      text = tryParseStringifiedJson(text, 'text');
+      // Try top-level fields first
+      markdown = extractContent(data.markdown_full || data.markdown, 'markdown');
+      text = extractContent(data.text_full || data.text, 'text');
 
+      // Try pages from the job object
       if (!markdown && job.pages && Array.isArray(job.pages)) {
-        markdown = job.pages.map((p: any) => p.markdown || '').join('\n\n');
+        markdown = extractContent(job.pages, 'markdown');
       }
       if (!text && job.pages && Array.isArray(job.pages)) {
-        text = job.pages.map((p: any) => p.text || p.markdown || '').join('\n\n');
+        text = extractContent(job.pages, 'text');
       }
+
+      // Try pages from the top-level data
+      if (!markdown && data.pages && Array.isArray(data.pages)) {
+        markdown = extractContent(data.pages, 'markdown');
+      }
+      if (!text && data.pages && Array.isArray(data.pages)) {
+        text = extractContent(data.pages, 'text');
+      }
+
+      console.log(`[LlamaParse v2] Extracted — markdown: ${markdown.length} chars, text: ${text.length} chars`);
       
       return { 
         markdown: markdown || text || '', 
@@ -205,4 +255,13 @@ async function pollForResult(jobId: string, maxWait = 600_000): Promise<ParseRes
   }
 
   throw lastError || new Error('LlamaParse failed after all attempts');
+}
+
+/**
+ * Utility: unwrap any JSON-wrapped content to plain text.
+ * Use this to clean up already-stored parsed_markdown that may be raw JSON.
+ */
+export function unwrapParsedContent(content: string): string {
+  if (!content) return '';
+  return extractContent(content, 'markdown') || extractContent(content, 'text') || content;
 }

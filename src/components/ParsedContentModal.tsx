@@ -11,26 +11,71 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered');
   const [reanalyzing, setReanalyzing] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [fileRecord, setFileRecord] = useState<any>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const file = files.find((f: any) => f.id === fileId);
+  // Find file in local array or fetch from DB
+  const localFile = files.find((f: any) => f.id === fileId);
 
+  // If file isn't in the local array (e.g., from a chat source in different folder), 
+  // fetch it directly from DB
   useEffect(() => {
-    if (!file) return;
+    if (localFile) {
+      setFileRecord(localFile);
+      return;
+    }
+    
+    // File not in current view — fetch from DB
+    let cancelled = false;
+    const fetchFile = async () => {
+      const { data: dbFile, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('id', fileId)
+        .single();
+      
+      if (!cancelled && !error && dbFile) {
+        setFileRecord({
+          id: dbFile.id,
+          name: dbFile.name,
+          originalName: dbFile.original_name,
+          original_name: dbFile.original_name,
+          mimeType: dbFile.mime_type,
+          mime_type: dbFile.mime_type,
+          size: dbFile.size,
+          storagePath: dbFile.storage_path,
+          storage_path: dbFile.storage_path,
+          folderId: dbFile.folder_id,
+          folder_id: dbFile.folder_id,
+          parsing_status: dbFile.parsing_status,
+          createdAt: dbFile.created_at,
+          created_at: dbFile.created_at,
+        });
+      } else if (!cancelled) {
+        console.error('[ParsedContentModal] File not found in DB:', fileId, error);
+      }
+    };
+    fetchFile();
+    return () => { cancelled = true; };
+  }, [fileId, localFile]);
+
+  // Fetch parsed content
+  useEffect(() => {
+    if (!fileRecord) return;
     let cancelled = false;
 
     const fetchParsed = async (attempt = 1) => {
       try {
         const { data: fileData, error } = await supabase
           .from('files')
-          .select('id, original_name, parsing_status, parsed_markdown, parsed_text, parse_error')
-          .eq('id', file.id)
+          .select('id, original_name, parsing_status, parsed_markdown, parsed_text, parse_error, ai_description')
+          .eq('id', fileRecord.id)
           .single();
         
         if (!cancelled && !error && fileData) {
           setData(fileData);
         } else if (!cancelled && !fileData && attempt === 1) {
-          // RLS may have blocked the query due to a stale session — retry once
           console.warn('[ParsedContent] First fetch returned null, retrying in 1.5s...');
           await new Promise(r => setTimeout(r, 1500));
           if (!cancelled) return fetchParsed(2);
@@ -44,13 +89,41 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
 
     fetchParsed();
     return () => { cancelled = true; };
-  }, [file, token]);
+  }, [fileRecord, token]);
 
-  if (!file) return null;
+  // Fetch thumbnail for images
+  useEffect(() => {
+    const storagePath = fileRecord?.storagePath || fileRecord?.storage_path || '';
+    const mimeType = fileRecord?.mimeType || fileRecord?.mime_type || '';
+    const isImg = mimeType.startsWith('image/');
+    
+    if (isImg && storagePath) {
+      supabase.storage.from('uploads').createSignedUrl(storagePath, 300).then(({ data }) => {
+        if (data?.signedUrl) setThumbnailUrl(data.signedUrl);
+      });
+    } else {
+      setThumbnailUrl(null);
+    }
+  }, [fileRecord]);
 
-  const mimeType = file.mimeType || file.mime_type || '';
-  const originalName = file.originalName || file.original_name || 'Unknown';
-  const storagePath = file.storagePath || file.storage_path || '';
+  // Show loading while we wait for file record
+  if (!fileRecord) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+        <div
+          className="bg-white dark:bg-[#1e1f20] rounded-2xl shadow-2xl w-full max-w-md p-12 flex flex-col items-center border border-gray-200/50 dark:border-gray-700/50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading file...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const mimeType = fileRecord.mimeType || fileRecord.mime_type || '';
+  const originalName = fileRecord.originalName || fileRecord.original_name || 'Unknown';
+  const storagePath = fileRecord.storagePath || fileRecord.storage_path || '';
 
   const isImage = mimeType.startsWith('image/');
   const isVideo = mimeType.startsWith('video/');
@@ -64,7 +137,7 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
   else if (isPdf) { Icon = FileText; iconColor = 'text-red-500 dark:text-red-400'; accentGradient = 'from-red-500/10 to-orange-500/10 dark:from-red-500/5 dark:to-orange-500/5'; }
   else { Icon = FileText; iconColor = 'text-blue-500 dark:text-blue-400'; }
 
-  const date = new Date(file.createdAt || file.created_at);
+  const date = new Date(fileRecord.createdAt || fileRecord.created_at);
   const formattedDate = isNaN(date.getTime()) ? 'Unknown' : format(date, 'MMM d, yyyy • h:mm a');
 
   const formatBytes = (bytes: number) => {
@@ -102,20 +175,19 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
   };
 
   const handleReanalyze = async () => {
-    if (!token || !file) return;
+    if (!token || !fileRecord) return;
     setReanalyzing(true);
     try {
-      // Re-trigger the upload webhook to re-parse the file
       const res = await fetch('/api/upload-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           originalName: originalName,
           mimeType: mimeType,
-          size: file.size,
+          size: fileRecord.size,
           storagePath: storagePath,
-          folderId: file.folderId || file.folder_id || null,
-          fileId: file.id
+          folderId: fileRecord.folderId || fileRecord.folder_id || null,
+          fileId: fileRecord.id
         }),
       });
       if (res.ok) {
@@ -130,24 +202,15 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
     }
   };
 
-  // Get thumbnail URL for images
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (isImage && storagePath) {
-      supabase.storage.from('uploads').createSignedUrl(storagePath, 300).then(({ data }) => {
-        if (data?.signedUrl) setThumbnailUrl(data.signedUrl);
-      });
-    }
-  }, [isImage, storagePath]);
-
   const statusConfig: Record<string, { icon: any; label: string; color: string; bg: string }> = {
     completed: { icon: CheckCircle2, label: 'Vectorized & Searchable', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/15' },
     parsing: { icon: Loader2, label: 'Extracting...', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/15' },
+    analyzing: { icon: Sparkles, label: 'AI Analyzing...', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/15' },
     embedding: { icon: Sparkles, label: 'Embedding...', color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/15' },
     error: { icon: AlertCircle, label: 'Failed', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/15' },
     idle: { icon: Clock, label: 'Queued', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/15' },
   };
-  const status = statusConfig[file?.parsing_status] || statusConfig.idle;
+  const status = statusConfig[fileRecord?.parsing_status] || statusConfig.idle;
   const StatusIcon = status.icon;
 
   return (
@@ -228,7 +291,7 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
                 </div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading document...</p>
               </div>
-            ) : !data || data.parsing_status === 'parsing' || data.parsing_status === 'embedding' || data.parsing_status === 'idle' ? (
+            ) : !data || data.parsing_status === 'parsing' || data.parsing_status === 'analyzing' || data.parsing_status === 'embedding' || data.parsing_status === 'idle' ? (
               <div className="flex flex-col items-center justify-center h-full py-20 px-6">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/15 flex items-center justify-center mb-6">
                   <Sparkles className="w-10 h-10 text-blue-500 animate-pulse" />
@@ -369,7 +432,7 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
 
             {/* AI Status badge */}
             <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium ${status.bg} ${status.color}`}>
-              <StatusIcon className={`w-4 h-4 ${file?.parsing_status === 'parsing' || file?.parsing_status === 'embedding' ? 'animate-spin' : ''}`} />
+              <StatusIcon className={`w-4 h-4 ${fileRecord?.parsing_status === 'parsing' || fileRecord?.parsing_status === 'embedding' ? 'animate-spin' : ''}`} />
               {status.label}
             </div>
 
@@ -383,7 +446,7 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
                 </div>
                 <div className="flex items-center justify-between px-3.5 py-2.5">
                   <span className="text-gray-400 dark:text-gray-500 text-xs">Size</span>
-                  <span className="font-medium text-[#1f1f1f] dark:text-[#e3e3e3] text-xs">{formatBytes(file.size)}</span>
+                  <span className="font-medium text-[#1f1f1f] dark:text-[#e3e3e3] text-xs">{formatBytes(fileRecord.size)}</span>
                 </div>
                 <div className="flex items-center justify-between px-3.5 py-2.5">
                   <span className="text-gray-400 dark:text-gray-500 text-xs">Created</span>
@@ -397,6 +460,16 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
                 )}
               </div>
             </div>
+
+            {/* AI Description */}
+            {data?.ai_description && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.15em] mb-2">AI Description</p>
+                <div className="bg-white dark:bg-[#1e1f20] rounded-xl border border-gray-100 dark:border-gray-800/80 p-3.5 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {data.ai_description.substring(0, 400)}{data.ai_description.length > 400 ? '...' : ''}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Download button */}

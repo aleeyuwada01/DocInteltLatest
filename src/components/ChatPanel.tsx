@@ -215,14 +215,34 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
         const searchRes = await fetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ embedding: queryEmbedding, topK: 5 }),
+          body: JSON.stringify({ embedding: queryEmbedding, topK: 10 }),
         });
         
         if (searchRes.ok) {
           const searchData = await searchRes.json();
           const results = searchData.results || [];
-          sourceFiles = results.map((r: any) => ({ id: r.fileId || r.file_id, name: r.fileName || r.original_name, score: r.score }));
-          context = results.map((r: any) => `[Source: ${r.fileName || r.original_name}]\n${r.text}`).join('\n\n---\n\n');
+          
+          // Deduplicate by file_id and keep highest score per file
+          const fileMap = new Map<string, any>();
+          for (const r of results) {
+            const fid = r.fileId || r.file_id;
+            if (!fid) continue;
+            const existing = fileMap.get(fid);
+            if (!existing || (r.score || 0) > (existing.score || 0)) {
+              fileMap.set(fid, { id: fid, name: r.fileName || r.original_name, score: r.score || 0 });
+            }
+          }
+          
+          // Sort by score and filter out low-relevance results
+          sourceFiles = Array.from(fileMap.values())
+            .sort((a, b) => b.score - a.score)
+            .filter(f => f.score > 0.15); // Only show genuinely relevant files
+          
+          // Build context from results (already deduplicated by search endpoint)
+          context = results
+            .filter((r: any) => (r.score || 0) > 0.15)
+            .map((r: any) => `[Source: ${r.fileName || r.original_name}]\n${r.text}`)
+            .join('\n\n---\n\n');
         }
       }
 
@@ -269,22 +289,15 @@ User Query: ${query}`;
         });
       }
       
-      // Split sources
-      const sortedSources = [...sourceFiles].sort((a, b) => (b.score || 0) - (a.score || 0));
-      const seen = new Set<string>();
-      const dedupedSources = sortedSources.filter(s => {
-        if (seen.has(s.id)) return false;
-        seen.add(s.id);
-        return true;
-      });
-      const [primarySource, ...relatedSources] = dedupedSources;
+      // Primary = highest score, Related = other files with reasonable scores
+      const [primarySource, ...relatedSources] = sourceFiles;
 
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
         if (lastMessage && lastMessage.role === 'ai') {
           lastMessage.primarySource = primarySource || null;
-          lastMessage.relatedSources = relatedSources;
+          lastMessage.relatedSources = relatedSources.filter(s => s.score > 0.25); // Only show truly related 
         }
         return newMessages;
       });
@@ -294,7 +307,7 @@ User Query: ${query}`;
         session_id: sessionId,
         role: 'ai',
         content: fullResponse,
-        sources: dedupedSources,
+        sources: sourceFiles,
       });
       
     } catch (error: any) {
