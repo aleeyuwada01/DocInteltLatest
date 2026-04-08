@@ -229,20 +229,52 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
             if (!fid) continue;
             const existing = fileMap.get(fid);
             if (!existing || (r.score || 0) > (existing.score || 0)) {
-              fileMap.set(fid, { id: fid, name: r.fileName || r.original_name, score: r.score || 0 });
+              fileMap.set(fid, { id: fid, name: r.fileName || r.original_name, score: r.score || 0, text: r.text });
             }
           }
           
           // Sort by score and filter out low-relevance results
           sourceFiles = Array.from(fileMap.values())
             .sort((a, b) => b.score - a.score)
-            .filter(f => f.score > 0.15); // Only show genuinely relevant files
+            .filter(f => f.score > 0.15);
           
-          // Build context from results (already deduplicated by search endpoint)
-          context = results
-            .filter((r: any) => (r.score || 0) > 0.15)
-            .map((r: any) => `[Source: ${r.fileName || r.original_name}]\n${r.text}`)
-            .join('\n\n---\n\n');
+          // Fetch AI descriptions for all matched source files to enrich context
+          if (sourceFiles.length > 0) {
+            const fileIds = sourceFiles.map((f: any) => f.id);
+            const { data: fileDetails } = await supabase
+              .from('files')
+              .select('id, original_name, ai_description, mime_type')
+              .in('id', fileIds);
+            
+            if (fileDetails) {
+              const detailMap = new Map(fileDetails.map((f: any) => [f.id, f]));
+              // Build rich context with AI descriptions
+              context = sourceFiles.map((src: any) => {
+                const detail = detailMap.get(src.id);
+                const aiDesc = detail?.ai_description || '';
+                const mimeType = detail?.mime_type || '';
+                const fileName = detail?.original_name || src.name;
+                const fileType = mimeType.startsWith('image/') ? 'Image' : mimeType === 'application/pdf' ? 'PDF Document' : 'Document';
+                
+                let entry = `[File: ${fileName}] (${fileType})`;
+                if (aiDesc) {
+                  entry += `\nAI Analysis: ${aiDesc}`;
+                }
+                if (src.text && src.text !== aiDesc) {
+                  entry += `\nExtracted Content: ${src.text}`;
+                }
+                return entry;
+              }).join('\n\n---\n\n');
+            }
+          }
+          
+          // Fallback: if no AI descriptions were fetched, use raw search text
+          if (!context) {
+            context = results
+              .filter((r: any) => (r.score || 0) > 0.15)
+              .map((r: any) => `[File: ${r.fileName || r.original_name}]\n${r.text}`)
+              .join('\n\n---\n\n');
+          }
         }
       }
 
@@ -254,21 +286,26 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
           results: sourceFiles,
           result_count: sourceFiles.length,
         });
-        // Refresh search history in background
         loadSearchHistory();
       }
       
-      // 3. Send to Gemini
-      const prompt = `You are DocIntel, an intelligent document assistant.
-Answer the user's query based on the provided document context.
-If the context doesn't contain the answer, say so, but try to be helpful.
-Always reference which source document the information comes from.
-When you identify the most relevant document, mention its exact filename clearly.
+      // 3. Send to Gemini with a document-search-aware prompt
+      const prompt = `You are DocIntel AI — an intelligent assistant that helps users find and understand files stored in their personal document drive.
 
-Context:
-${context || '(No documents found matching the query)'}
+CRITICAL CONTEXT: The user is ALWAYS asking about their uploaded files, documents, images, or PDFs. They are NOT asking for general knowledge or real-world services. When a user says "find me a doctor", they mean "find a file or image in my drive that relates to a doctor." When they say "looking for a politician", they mean "find an image or document about a politician in my files."
 
-User Query: ${query}`;
+Your job:
+1. Search the provided file context to find which files match the user's request.
+2. When you find matching files, describe what the file contains and state its exact filename clearly.
+3. If multiple files match, list them all with descriptions.
+4. Be confident in your matches — if an AI analysis mentions the topic the user is looking for, that IS a match.
+5. Never say "I cannot help" if there are files in the context. Always describe what files are available and suggest which one might be what the user is looking for.
+
+Here are the files found in the user's drive:
+${context || '(No files matched the search query)'}
+
+User's request: ${query}`;
+
 
       const responseStream = await ai.models.generateContentStream({
         model: 'gemini-2.5-flash',
