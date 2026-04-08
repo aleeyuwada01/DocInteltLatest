@@ -337,23 +337,31 @@ User's request: ${query}`;
         });
       }
       
-      // Determine primary source by checking which file the AI actually referenced
-      // rather than relying solely on embedding similarity score
+      // Determine primary source by finding which file the AI FIRST mentions
+      // in its response — not just the first match from the embedding-sorted list
       const responseLower = fullResponse.toLowerCase();
       let primarySource = sourceFiles[0] || null;
+      let earliestPosition = Infinity;
       
-      // Check which source file names appear in the AI's response
       for (const src of sourceFiles) {
         const srcName = (src.name || '').toLowerCase();
-        if (srcName && responseLower.includes(srcName)) {
-          primarySource = src;
-          break; // First match in the AI response = most relevant
-        }
+        if (!srcName) continue;
+        
+        // Check exact filename match position in AI response
+        let pos = responseLower.indexOf(srcName);
+        
         // Also check partial name match (without extension)
-        const baseName = srcName.replace(/\.[^.]+$/, '');
-        if (baseName.length > 5 && responseLower.includes(baseName)) {
+        if (pos === -1) {
+          const baseName = srcName.replace(/\.[^.]+$/, '');
+          if (baseName.length > 3) {
+            pos = responseLower.indexOf(baseName);
+          }
+        }
+        
+        // The file mentioned earliest in the response is the true best match
+        if (pos !== -1 && pos < earliestPosition) {
+          earliestPosition = pos;
           primarySource = src;
-          break;
         }
       }
       
@@ -641,17 +649,34 @@ User's request: ${query}`;
                 )}
               </div>
               
-              {/* Primary source */}
+              {/* Primary source with confidence score */}
               {msg.primarySource && (
                 <div className="mt-2 w-full max-w-[85%]">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-[#444746] dark:text-[#c4c7c5] mb-1.5 ml-0.5">Source</p>
                   <button
                     onClick={() => onPreviewFile(msg.primarySource.id)}
-                    className="flex items-center gap-2 text-xs bg-[#e8f0fe] dark:bg-[#0b3d91]/30 text-[#0b57d0] dark:text-[#a8c7fa] px-3 py-2 rounded-xl hover:bg-[#d2e3fc] dark:hover:bg-[#0b3d91]/50 active:scale-[0.98] transition-all border border-[#0b57d0]/15 dark:border-[#a8c7fa]/20 w-full"
+                    className="relative flex items-center gap-2 text-xs text-[#0b57d0] dark:text-[#a8c7fa] px-3 py-2 rounded-xl hover:brightness-95 active:scale-[0.98] transition-all border border-[#0b57d0]/15 dark:border-[#a8c7fa]/20 w-full overflow-hidden"
+                    style={{
+                      background: msg.primarySource.score
+                        ? `linear-gradient(90deg, rgba(34,197,94,${Math.min(msg.primarySource.score * 0.3, 0.25)}) 0%, rgba(34,197,94,${Math.min(msg.primarySource.score * 0.1, 0.08)}) 100%)`
+                        : undefined,
+                    }}
                   >
                     <FileText className="w-4 h-4 shrink-0" />
                     <span className="truncate font-semibold flex-1 text-left">{msg.primarySource.name}</span>
-                    <span className="text-[10px] opacity-60 shrink-0">Best match</span>
+                    {msg.primarySource.score ? (
+                      <span className={`text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded-full ${
+                        msg.primarySource.score >= 0.7
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                          : msg.primarySource.score >= 0.4
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                      }`}>
+                        {Math.round(msg.primarySource.score * 100)}%
+                      </span>
+                    ) : (
+                      <span className="text-[10px] opacity-60 shrink-0">Best match</span>
+                    )}
                   </button>
                 </div>
               )}
@@ -720,10 +745,26 @@ function RelatedSources({ sources, onPreviewFile }: { sources: any[]; onPreviewF
             <button
               key={idx}
               onClick={() => onPreviewFile(src.id)}
-              className="flex items-center gap-2 text-xs bg-[#f0f4f9] dark:bg-[#282a2c] text-[#444746] dark:text-[#c4c7c5] px-3 py-1.5 rounded-lg hover:bg-[#e9eef6] dark:hover:bg-[#37393b] active:scale-[0.98] transition-all border border-gray-200/50 dark:border-gray-700/50 text-left w-full"
+              className="flex items-center gap-2 text-xs text-[#444746] dark:text-[#c4c7c5] px-3 py-1.5 rounded-lg hover:bg-[#e9eef6] dark:hover:bg-[#37393b] active:scale-[0.98] transition-all border border-gray-200/50 dark:border-gray-700/50 text-left w-full"
+              style={{
+                background: src.score
+                  ? `linear-gradient(90deg, rgba(34,197,94,${Math.min(src.score * 0.2, 0.15)}) 0%, transparent 60%)`
+                  : undefined,
+              }}
             >
               <FileText className="w-3.5 h-3.5 shrink-0 opacity-60" />
               <span className="truncate flex-1">{src.name}</span>
+              {src.score && (
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                  src.score >= 0.6
+                    ? 'bg-emerald-100/80 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : src.score >= 0.35
+                    ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
+                }`}>
+                  {Math.round(src.score * 100)}%
+                </span>
+              )}
             </button>
           ))}
         </div>
