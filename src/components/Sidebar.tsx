@@ -1,6 +1,6 @@
 import {
   HardDrive, Trash2, Cloud, Plus, FolderPlus, FileUp, X,
-  ChevronRight, UploadCloud
+  ChevronRight, UploadCloud, Settings, Moon, Sun, Files, FolderUp
 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -8,14 +8,17 @@ import { DocIntelLogo } from './LandingPage';
 import { supabase } from '../lib/supabaseClient';
 
 export function Sidebar({
-  currentView, setCurrentView, storage, onUpload,
-  onFolderCreate, currentFolderId, token, user, onUpgrade, isOpen, onClose
+  currentView, setCurrentView, storage, onUpload, onFolderUpload,
+  onFolderCreate, currentFolderId, token, user, onUpgrade, isOpen, onClose,
+  darkMode, setDarkMode, onSettings
 }: any) {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [folderLoading, setFolderLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const bulkFileRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
   const newMenuRef = useRef<HTMLDivElement>(null);
 
   const used = storage.used || 0;
@@ -112,7 +115,7 @@ export function Sidebar({
             </button>
 
             {isNewOpen && (
-              <div className="absolute top-[calc(100%+6px)] left-0 w-52 bg-white dark:bg-[#1e1f20] border border-gray-200/60 dark:border-gray-700/50 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-slide-up">
+              <div className="absolute top-[calc(100%+6px)] left-0 w-56 bg-white dark:bg-[#1e1f20] border border-gray-200/60 dark:border-gray-700/50 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-slide-up">
                 <button
                   onClick={() => { setIsNewOpen(false); setIsCreateFolderOpen(true); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors"
@@ -123,7 +126,7 @@ export function Sidebar({
                 <div className="my-1 h-px bg-gray-100 dark:bg-gray-800 mx-2" />
                 <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors cursor-pointer">
                   <FileUp className="w-4 h-4 text-[#0b57d0] dark:text-[#a8c7fa]" />
-                  <span className="font-medium">File Upload</span>
+                  <span className="font-medium">Upload File</span>
                   <input
                     type="file"
                     className="hidden"
@@ -132,6 +135,43 @@ export function Sidebar({
                       const file = e.target.files?.[0];
                       if (file) onUpload(file);
                       setIsNewOpen(false);
+                      if (fileRef.current) fileRef.current.value = '';
+                    }}
+                  />
+                </label>
+                <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors cursor-pointer">
+                  <Files className="w-4 h-4 text-[#0b57d0] dark:text-[#a8c7fa]" />
+                  <span className="font-medium">Upload Multiple Files</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    multiple
+                    ref={bulkFileRef}
+                    onChange={e => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        onUpload(Array.from(files));
+                      }
+                      setIsNewOpen(false);
+                      if (bulkFileRef.current) bulkFileRef.current.value = '';
+                    }}
+                  />
+                </label>
+                <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors cursor-pointer">
+                  <FolderUp className="w-4 h-4 text-[#0b57d0] dark:text-[#a8c7fa]" />
+                  <span className="font-medium">Upload Folder</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    ref={folderRef}
+                    {...({ webkitdirectory: '', directory: '', mozdirectory: '' } as any)}
+                    onChange={e => {
+                      const files = e.target.files;
+                      if (files && files.length > 0 && onFolderUpload) {
+                        onFolderUpload(files);
+                      }
+                      setIsNewOpen(false);
+                      if (folderRef.current) folderRef.current.value = '';
                     }}
                   />
                 </label>
@@ -154,6 +194,24 @@ export function Sidebar({
               onClick={() => setCurrentView('trash')}
             />
           </nav>
+
+          {/* Mobile-only: Settings & Dark Mode */}
+          <div className="md:hidden mt-4 pt-4 border-t border-gray-200/50 dark:border-gray-800/50 space-y-0.5">
+            <button
+              onClick={() => { onSettings?.(); onClose(); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] hover:text-[#1a1a2e] dark:hover:text-white transition-all duration-150"
+            >
+              <Settings size={16} />
+              Settings
+            </button>
+            <button
+              onClick={() => setDarkMode?.(!darkMode)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] hover:text-[#1a1a2e] dark:hover:text-white transition-all duration-150"
+            >
+              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              {darkMode ? 'Light Mode' : 'Dark Mode'}
+            </button>
+          </div>
         </div>
 
         {/* ── Storage meter ─────────────────────────────────── */}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { MainContent } from './components/MainContent';
@@ -13,8 +13,10 @@ import { LandingPage } from './components/LandingPage';
 import { SettingsModal } from './components/SettingsModal';
 import { StorageModal } from './components/StorageModal';
 import { ParsedContentModal } from './components/ParsedContentModal';
+import { UploadProgress, type UploadItem } from './components/UploadProgress';
 import { Toaster, toast } from 'sonner';
 import { supabase, mapFile, mapFolder } from './lib/supabaseClient';
+import * as tus from 'tus-js-client';
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
@@ -37,6 +39,16 @@ export default function App() {
   const [isStorageOpen, setIsStorageOpen] = useState(false);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
   const [unauthView, setUnauthView] = useState<'landing' | 'auth'>('landing');
+
+  // Upload queue
+  const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
+  const uploadProcessing = useRef(false);
+
+  // Pagination
+  const PAGE_SIZE = 50;
+  const [hasMoreFiles, setHasMoreFiles] = useState(false);
+  const [hasMoreFolders, setHasMoreFolders] = useState(false);
+  const [totalFileCount, setTotalFileCount] = useState(0);
 
   // Dark mode persistence
   useEffect(() => {
@@ -139,20 +151,19 @@ export default function App() {
     setUser(null);
   };
 
-  // ── Fetch Drive ────────────────────────────────────────────────────────────
+  // ── Fetch Drive (with pagination) ──────────────────────────────────────────
   const [isDriveLoading, setIsDriveLoading] = useState(false);
 
-  const fetchDrive = async () => {
-    if (!session || !user) {
-      console.log(`[Drive] Skipping fetch — session: ${!!session}, user: ${!!user}`);
-      return;
-    }
+  const fetchDrive = useCallback(async (loadMore = false) => {
+    if (!session || !user) return;
 
-    console.log('[Drive] Fetching drive data...');
-    setIsDriveLoading(true);
+    if (!loadMore) setIsDriveLoading(true);
     try {
-      let filesQuery = supabase.from('files').select('*');
-      let foldersQuery = supabase.from('folders').select('*');
+      const offset = loadMore ? files.length : 0;
+      const folderOffset = loadMore ? folders.length : 0;
+
+      let filesQuery = supabase.from('files').select('*', { count: 'exact' });
+      let foldersQuery = supabase.from('folders').select('*', { count: 'exact' });
 
       if (currentView === 'trash') {
         filesQuery = filesQuery.not('trashed_at', 'is', null);
@@ -160,7 +171,6 @@ export default function App() {
       } else {
         filesQuery = filesQuery.is('trashed_at', null);
         foldersQuery = foldersQuery.is('trashed_at', null);
-        
         if (currentFolderId) {
           filesQuery = filesQuery.eq('folder_id', currentFolderId);
           foldersQuery = foldersQuery.eq('parent_id', currentFolderId);
@@ -171,88 +181,233 @@ export default function App() {
       }
 
       const [filesRes, foldersRes] = await Promise.all([
-        filesQuery.order('created_at', { ascending: false }),
-        foldersQuery.order('created_at', { ascending: false })
+        filesQuery.order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1),
+        foldersQuery.order('created_at', { ascending: false }).range(folderOffset, folderOffset + PAGE_SIZE - 1)
       ]);
 
-      console.log(`[Drive] Files: ${filesRes.data?.length ?? 0}, error: ${filesRes.error?.message || 'none'}`);
-      console.log(`[Drive] Folders: ${foldersRes.data?.length ?? 0}, error: ${foldersRes.error?.message || 'none'}`);
+      const mappedFiles = (filesRes.data || []).map(mapFile);
+      const mappedFolders = (foldersRes.data || []).map(mapFolder);
 
-      if (filesRes.error) console.error('Files error:', filesRes.error);
-      if (foldersRes.error) console.error('Folders error:', foldersRes.error);
-
-      try {
-        const mappedFiles = (filesRes.data || []).map(mapFile);
-        const mappedFolders = (foldersRes.data || []).map(mapFolder);
-        
-        console.log(`[Drive] mappedFiles: ${mappedFiles.length}`);
-        console.log(`[Drive] mappedFolders: ${mappedFolders.length}`);
-
+      if (loadMore) {
+        setFiles(prev => [...prev, ...mappedFiles]);
+        setFolders(prev => [...prev, ...mappedFolders]);
+      } else {
         setFiles(mappedFiles);
         setFolders(mappedFolders);
-      } catch (err: any) {
-        toast.error(`Mapping Error: ${err.message}`, { duration: Infinity });
-        console.error(`MAPPING ERROR: ${err.message}`);
       }
-      
-      // Calculate storage
-      try {
-        const { data: allFiles } = await supabase.from('files').select('size').is('trashed_at', null);
-        const usedStorage = (allFiles || []).reduce((acc: number, f: any) => acc + (f.size || 0), 0);
-        setStorage({ used: usedStorage, limit: user.storage_limit || (1 * 1024 * 1024 * 1024) });
-      } catch (err: any) {
-         console.error('Storage Error:', err);
+
+      setTotalFileCount(filesRes.count || mappedFiles.length);
+      setHasMoreFiles((offset + mappedFiles.length) < (filesRes.count || 0));
+      setHasMoreFolders((folderOffset + mappedFolders.length) < (foldersRes.count || 0));
+
+      // Storage
+      if (!loadMore) {
+        try {
+          const { data: allFiles } = await supabase.from('files').select('size').is('trashed_at', null);
+          const usedStorage = (allFiles || []).reduce((acc: number, f: any) => acc + (f.size || 0), 0);
+          setStorage({ used: usedStorage, limit: user.storage_limit || (1 * 1024 * 1024 * 1024) });
+        } catch { /* ignore */ }
       }
     } catch (error: any) {
-      toast.error(`Fetch error: ${error.message}`, { duration: Infinity });
-      console.error(`Fetch error: ${error.message}`);
+      toast.error(`Fetch error: ${error.message}`);
     } finally {
       setIsDriveLoading(false);
     }
-  };
+  }, [session, user, currentView, currentFolderId, files.length, folders.length]);
 
   useEffect(() => {
     if (session && user) fetchDrive();
   }, [currentView, currentFolderId, session, user]);
 
-  // ── Upload ─────────────────────────────────────────────────────────────────
-  const handleUpload = async (file: File) => {
-    if (!file || !session || !user) return;
-    toast.loading(`Uploading ${file.name}...`, { id: 'upload' });
-    try {
-      const filePath = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('uploads')
-        .upload(filePath, file);
+  // ── Upload System (tus resumable + queue) ──────────────────────────────────
+  const uploadFileWithTus = (item: UploadItem): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const fileName = `${user.id}/${Date.now()}-${item.file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+      const projectRef = (import.meta.env.VITE_SUPABASE_URL || '').replace('https://', '').split('.')[0];
 
-      if (uploadError) throw uploadError;
-
-      const token = session.access_token;
-      const res = await fetch('/api/upload-webhook', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+      const upload = new tus.Upload(item.file, {
+        endpoint: `https://${projectRef}.supabase.co/storage/v1/upload/resumable`,
+        retryDelays: [0, 1000, 3000, 5000],
+        headers: {
+          authorization: `Bearer ${session.access_token}`,
+          'x-upsert': 'false',
         },
-        body: JSON.stringify({
-          originalName: file.name,
-          mimeType: file.type,
-          size: file.size,
-          storagePath: uploadData.path,
-          folderId: currentFolderId || null
-        }),
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        metadata: {
+          bucketName: 'uploads',
+          objectName: fileName,
+          contentType: item.file.type,
+          cacheControl: '3600',
+        },
+        chunkSize: 6 * 1024 * 1024, // 6MB chunks
+        onError: (error) => {
+          console.error('[TUS] Upload error:', error);
+          reject(error);
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+          setUploadQueue(prev => prev.map(u =>
+            u.id === item.id ? { ...u, progress: pct } : u
+          ));
+        },
+        onSuccess: () => {
+          resolve(fileName);
+        },
       });
 
-      if (res.ok) {
-        fetchDrive();
-        toast.success(`${file.name} uploaded — parsing in background…`, { id: 'upload' });
-      } else {
-        const err = await res.json();
-        toast.error(`Upload failed: ${err.error}`, { id: 'upload' });
+      upload.findPreviousUploads().then((previousUploads) => {
+        if (previousUploads.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+        upload.start();
+      });
+    });
+  };
+
+  const processUploadQueue = useCallback(async () => {
+    if (uploadProcessing.current) return;
+    uploadProcessing.current = true;
+
+    while (true) {
+      const nextItem = uploadQueue.find(u => u.status === 'queued');
+      // Re-read from state (need latest)
+      let current: UploadItem | undefined;
+      setUploadQueue(prev => {
+        current = prev.find(u => u.status === 'queued');
+        return prev;
+      });
+      // Small delay to let state settle
+      await new Promise(r => setTimeout(r, 50));
+      setUploadQueue(prev => {
+        current = prev.find(u => u.status === 'queued');
+        return prev;
+      });
+      if (!current) break;
+
+      const itemId = current.id;
+
+      // Mark uploading
+      setUploadQueue(prev => prev.map(u =>
+        u.id === itemId ? { ...u, status: 'uploading' as const, progress: 0 } : u
+      ));
+
+      try {
+        // Upload via tus
+        const storagePath = await uploadFileWithTus(current);
+
+        // Mark processing
+        setUploadQueue(prev => prev.map(u =>
+          u.id === itemId ? { ...u, status: 'processing' as const, progress: 100 } : u
+        ));
+
+        // Trigger webhook
+        const res = await fetch('/api/upload-webhook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            originalName: current.file.name,
+            mimeType: current.file.type,
+            size: current.file.size,
+            storagePath,
+            folderId: current.folderId || currentFolderId || null,
+          }),
+        });
+
+        if (!res.ok) throw new Error('Webhook failed');
+
+        setUploadQueue(prev => prev.map(u =>
+          u.id === itemId ? { ...u, status: 'done' as const } : u
+        ));
+      } catch (err: any) {
+        setUploadQueue(prev => prev.map(u =>
+          u.id === itemId ? { ...u, status: 'error' as const, error: err.message || 'Upload failed', retries: u.retries + 1 } : u
+        ));
       }
-    } catch (err: any) {
-      toast.error(`Upload failed: ${err.message}`, { id: 'upload' });
     }
+
+    uploadProcessing.current = false;
+    fetchDrive(); // Refresh after queue completes
+  }, [uploadQueue, session, user, currentFolderId]);
+
+  // Process queue when new items are added
+  useEffect(() => {
+    const hasQueued = uploadQueue.some(u => u.status === 'queued');
+    if (hasQueued && !uploadProcessing.current) {
+      processUploadQueue();
+    }
+  }, [uploadQueue]);
+
+  const handleUpload = (fileOrFiles: File | File[]) => {
+    if (!session || !user) return;
+    const fileArray = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+    if (fileArray.length === 0) return;
+
+    const newItems: UploadItem[] = fileArray.map(file => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file,
+      status: 'queued' as const,
+      progress: 0,
+      retries: 0,
+      folderId: currentFolderId,
+    }));
+
+    setUploadQueue(prev => [...prev, ...newItems]);
+  };
+
+  const handleFolderUpload = async (fileList: FileList) => {
+    if (!session || !user || fileList.length === 0) return;
+
+    // Extract folder name from first file's webkitRelativePath
+    const firstPath = (fileList[0] as any).webkitRelativePath || '';
+    const folderName = firstPath.split('/')[0] || 'Uploaded Folder';
+
+    // Create the folder in DB
+    try {
+      const { data: folder, error } = await supabase
+        .from('folders')
+        .insert({
+          name: folderName,
+          parent_id: currentFolderId || null,
+          owner_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Queue all files with the new folder ID
+      const newItems: UploadItem[] = Array.from(fileList).map(file => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        status: 'queued' as const,
+        progress: 0,
+        retries: 0,
+        folderId: folder.id,
+      }));
+
+      setUploadQueue(prev => [...prev, ...newItems]);
+      toast.success(`Folder "${folderName}" created — uploading ${fileList.length} files…`);
+    } catch (err: any) {
+      toast.error(`Failed to create folder: ${err.message}`);
+    }
+  };
+
+  const handleRetryUpload = (id: string) => {
+    setUploadQueue(prev => prev.map(u =>
+      u.id === id ? { ...u, status: 'queued' as const, error: undefined, progress: 0 } : u
+    ));
+  };
+
+  const handleCancelUpload = (id: string) => {
+    setUploadQueue(prev => prev.filter(u => u.id !== id));
+  };
+
+  const handleDismissUploads = () => {
+    setUploadQueue([]);
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -291,7 +446,8 @@ export default function App() {
         currentView={currentView} 
         setCurrentView={(view: string) => { setCurrentView(view); setCurrentFolderId(null); }} 
         storage={storage} 
-        onUpload={handleUpload} 
+        onUpload={handleUpload}
+        onFolderUpload={handleFolderUpload}
         onFolderCreate={fetchDrive}
         currentFolderId={currentFolderId}
         token={token}
@@ -299,6 +455,9 @@ export default function App() {
         onUpgrade={() => setIsStorageOpen(true)}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        onSettings={() => setIsSettingsOpen(true)}
       />
       
       <div className="flex-1 flex flex-col min-w-0 bg-[#f8fafd] dark:bg-[#131314] transition-colors duration-200">
@@ -310,6 +469,7 @@ export default function App() {
           onSettings={() => setIsSettingsOpen(true)}
           token={token}
           onMenuClick={() => setIsMobileMenuOpen(true)}
+          onPreviewFile={setPreviewFileId}
         />
         
         <div className="flex-1 overflow-hidden p-2 md:p-4 pt-0 flex flex-row gap-4 min-h-0 relative">
@@ -324,18 +484,29 @@ export default function App() {
                 folders={folders} 
                 onUpload={handleUpload} 
                 currentView={currentView} 
-                refresh={fetchDrive}
+                refresh={() => fetchDrive()}
                 currentFolderId={currentFolderId}
                 setCurrentFolderId={setCurrentFolderId}
                 token={token}
                 user={user}
                 onPreviewFile={setPreviewFileId}
+                hasMore={hasMoreFiles || hasMoreFolders}
+                totalFileCount={totalFileCount}
+                onLoadMore={() => fetchDrive(true)}
               />
             )}
           </div>
           <ChatPanel token={token} user={user} onPreviewFile={setPreviewFileId} />
         </div>
       </div>
+
+      {/* Upload Progress Panel */}
+      <UploadProgress
+        uploads={uploadQueue}
+        onRetry={handleRetryUpload}
+        onCancel={handleCancelUpload}
+        onDismiss={handleDismissUploads}
+      />
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} token={token} user={user} />
       <StorageModal isOpen={isStorageOpen} onClose={() => setIsStorageOpen(false)} token={token} />

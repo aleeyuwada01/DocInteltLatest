@@ -15,7 +15,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const userClient = createUserClient(token);
 
-  const { query, embedding: providedEmbedding, topK } = req.body;
+  const { query, embedding: providedEmbedding, topK, mode, fileId } = req.body;
+
+  // ── Related Files Mode ─────────────────────────────────────────────────────
+  // Given a fileId, find semantically similar files by using that file's  
+  // AI description as a search query
+  if (mode === 'related' && fileId) {
+    try {
+      // Fetch the source file's AI description
+      const { data: sourceFile } = await userClient
+        .from('files')
+        .select('id, original_name, ai_description, parsed_markdown')
+        .eq('id', fileId)
+        .single();
+
+      if (!sourceFile) return res.json({ results: [] });
+
+      // Build a search query from the source file's content
+      const searchText = sourceFile.ai_description
+        || sourceFile.parsed_markdown?.substring(0, 1000)
+        || sourceFile.original_name
+        || '';
+
+      if (!searchText.trim()) return res.json({ results: [] });
+
+      // Embed the source file's description
+      const embedResult = await embedText(searchText.substring(0, 2000));
+      const sourceEmbedding = embedResult.values;
+
+      // Vector search for similar files
+      const { data: matches } = await userClient.rpc('match_embeddings', {
+        query_embedding: sourceEmbedding,
+        match_threshold: 0.3, // Higher threshold for related = more relevant
+        match_count: 20,
+        filter_owner_id: user.id,
+      });
+
+      // Deduplicate and exclude the source file
+      const fileMap = new Map<string, any>();
+      for (const r of (matches || [])) {
+        if (r.file_id === fileId) continue; // Exclude source file
+        const existing = fileMap.get(r.file_id);
+        if (!existing || r.similarity > existing.similarity) {
+          fileMap.set(r.file_id, r);
+        }
+      }
+
+      const relatedFiles = Array.from(fileMap.values())
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, topK || 5)
+        .map((r: any) => ({
+          file_id: r.file_id,
+          fileName: r.original_name || r.file_name,
+          original_name: r.original_name || r.file_name,
+          text: r.text,
+          score: r.similarity,
+        }));
+
+      return res.json({ results: relatedFiles });
+    } catch (error: any) {
+      console.error('[Search API] Related files error:', error);
+      return res.json({ results: [] });
+    }
+  }
+
+  // ── Standard Search Mode ───────────────────────────────────────────────────
   if (!query && !providedEmbedding) return res.status(400).json({ error: 'query or embedding is required' });
 
   try {
@@ -29,14 +93,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Vector similarity search using match_embeddings RPC
     const { data: results, error: searchError } = await userClient.rpc('match_embeddings', {
       query_embedding: embedding,
-      match_threshold: 0.2, // Lowered from 0.3 for better recall
-      match_count: topK || 10, // Increased from 5 for better results
+      match_threshold: 0.2,
+      match_count: topK || 10,
       filter_owner_id: user.id
     });
 
     if (searchError) {
       console.error('[Search API] RPC error:', searchError);
-      // Fallback: do a combined text + ai_description search
+      // Fallback: text + ai_description search
       const { data: fallbackResults } = await userClient
         .from('files')
         .select('id, name, original_name, parsed_markdown, ai_description')
@@ -44,7 +108,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .is('trashed_at', null)
         .limit(10);
 
-      // Score fallback results by relevance to query
       const queryLower = (query || '').toLowerCase();
       const scoredResults = (fallbackResults || []).map((f: any) => {
         const searchableText = [
@@ -53,7 +116,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           f.parsed_markdown || ''
         ].join(' ').toLowerCase();
 
-        // Simple keyword matching score
         const queryWords = queryLower.split(/\s+/).filter(Boolean);
         const matches = queryWords.filter(w => searchableText.includes(w)).length;
         const score = queryWords.length > 0 ? matches / queryWords.length : 0;
@@ -70,7 +132,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .sort((a: any, b: any) => b.score - a.score)
       .slice(0, topK || 5);
 
-      // If no keyword matches, return all files with base score
       const finalResults = scoredResults.length > 0 ? scoredResults : (fallbackResults || []).map((f: any) => ({
         file_id: f.id,
         fileName: f.original_name || f.name,
@@ -86,7 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Deduplicate by file_id — keep highest scoring match per file
+    // Deduplicate by file_id
     const fileMap = new Map<string, any>();
     for (const r of (results || [])) {
       const existing = fileMap.get(r.file_id);

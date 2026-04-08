@@ -45,7 +45,7 @@ function StatusBadge({ status }: { status: string }) {
 
 
 // ─── Main Content ────────────────────────────────────────────────────────────
-export function MainContent({ files, folders, onUpload, currentView, refresh, currentFolderId, setCurrentFolderId, token, user, onPreviewFile }: any) {
+export function MainContent({ files, folders, onUpload, currentView, refresh, currentFolderId, setCurrentFolderId, token, user, onPreviewFile, hasMore, totalFileCount, onLoadMore }: any) {
   const isTrash = currentView === 'trash';
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -165,7 +165,14 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
       )}
 
       <section>
-        <h2 className="text-sm font-medium text-[#444746] dark:text-[#c4c7c5] mb-4">Files</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-medium text-[#444746] dark:text-[#c4c7c5]">Files</h2>
+          {totalFileCount > 0 && (
+            <span className="text-xs text-[#9aa0a6]">
+              Showing {files.length} of {totalFileCount}
+            </span>
+          )}
+        </div>
         {viewMode === 'list' && files.length > 0 && (
           <div className="flex text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-2 mb-2 px-3">
             <div className="flex-1">Name</div>
@@ -185,6 +192,18 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
             </div>
           )}
         </div>
+
+        {/* Load More button */}
+        {hasMore && (
+          <div className="flex justify-center mt-8 mb-4">
+            <button
+              onClick={onLoadMore}
+              className="px-6 py-2.5 bg-[#f0f4f9] dark:bg-[#282a2c] text-[#0b57d0] dark:text-[#a8c7fa] rounded-full text-sm font-medium hover:bg-[#e8f0fe] dark:hover:bg-[#37393b] hover:shadow-md transition-all duration-200 border border-[#0b57d0]/10 dark:border-[#a8c7fa]/10"
+            >
+              Load More
+            </button>
+          </div>
+        )}
       </section>
     </main>
   );

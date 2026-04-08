@@ -294,12 +294,19 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
 
 CRITICAL CONTEXT: The user is ALWAYS asking about their uploaded files, documents, images, or PDFs. They are NOT asking for general knowledge or real-world services. When a user says "find me a doctor", they mean "find a file or image in my drive that relates to a doctor." When they say "looking for a politician", they mean "find an image or document about a politician in my files."
 
+INTELLIGENT BEHAVIOR:
+- If the user makes a typo or unclear request, interpret their most likely intent and state what you searched for. Example: "I interpreted your request as looking for files about [topic]."
+- If results seem ambiguous, ask a clarifying follow-up question.
+- Suggest what the user could do next (e.g., "Would you like me to find similar documents?" or "Try searching for [alternative term].")
+- Always be helpful and proactive, never dismissive.
+
 Your job:
 1. Search the provided file context to find which files match the user's request.
 2. When you find matching files, describe what the file contains and state its exact filename clearly.
-3. If multiple files match, list them all with descriptions.
+3. If multiple files match, list them all with brief descriptions.
 4. Be confident in your matches — if an AI analysis mentions the topic the user is looking for, that IS a match.
 5. Never say "I cannot help" if there are files in the context. Always describe what files are available and suggest which one might be what the user is looking for.
+6. Keep responses concise and focused. Use bullet points for multiple results.
 
 Here are the files found in the user's drive:
 ${context || '(No files matched the search query)'}
@@ -350,10 +357,25 @@ User's request: ${query}`;
         }
       }
       
-      // Related = other source files excluding the primary
-      const relatedSources = sourceFiles
-        .filter(s => s.id !== primarySource?.id)
-        .filter(s => s.score > 0.25);
+      // Fetch truly related files from the server using the primary file's AI description
+      let relatedSources: any[] = [];
+      if (primarySource?.id) {
+        try {
+          const relatedRes = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ mode: 'related', fileId: primarySource.id, topK: 5 }),
+          });
+          if (relatedRes.ok) {
+            const relatedData = await relatedRes.json();
+            relatedSources = (relatedData.results || []).map((r: any) => ({
+              id: r.file_id,
+              name: r.fileName || r.original_name,
+              score: r.score,
+            }));
+          }
+        } catch { /* ignore related files errors */ }
+      }
 
       setMessages(prev => {
         const newMessages = [...prev];
@@ -582,14 +604,29 @@ User's request: ${query}`;
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-[#1e1f20]">
         {messages.length === 0 ? (
-          <div className="text-center text-[#444746] dark:text-[#c4c7c5] mt-10">
-            <Sparkles className="w-12 h-12 mx-auto mb-4 text-blue-600/20 dark:text-blue-400/20" />
-            <h3 className="text-lg font-medium text-[#1f1f1f] dark:text-[#e3e3e3] mb-2">Ask about your files</h3>
-            <p className="text-sm">Try asking:</p>
-            <ul className="text-sm mt-2 space-y-2 text-[#0b57d0] dark:text-[#a8c7fa]">
-              <li className="cursor-pointer hover:underline" onClick={() => setInput("Summarize my recent documents")}>"Summarize my recent documents"</li>
-              <li className="cursor-pointer hover:underline" onClick={() => setInput("Find files related to budget")}>"Find files related to budget"</li>
-            </ul>
+          <div className="text-center text-[#444746] dark:text-[#c4c7c5] mt-6 px-2">
+            <Sparkles className="w-10 h-10 mx-auto mb-3 text-blue-600/20 dark:text-blue-400/20" />
+            <h3 className="text-base font-medium text-[#1f1f1f] dark:text-[#e3e3e3] mb-4">How can I help you today?</h3>
+            <div className="grid grid-cols-1 gap-2 text-left">
+              {[
+                { icon: '🔍', title: 'Find specific files', desc: 'Search by topic, keyword, or description', prompt: 'Find documents containing keywords about...' },
+                { icon: '📊', title: 'Analyze my documents', desc: 'Get summaries and key insights', prompt: 'Summarize the key insights from my uploaded reports' },
+                { icon: '🖼️', title: 'Locate images', desc: 'Find images matching a description', prompt: 'Find images or screenshots that show...' },
+                { icon: '📁', title: 'Compare documents', desc: 'Cross-reference content across files', prompt: 'Compare the content across my recent documents' },
+              ].map((card) => (
+                <button
+                  key={card.title}
+                  onClick={() => setInput(card.prompt)}
+                  className="flex items-start gap-3 p-3 rounded-xl text-left hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors border border-transparent hover:border-gray-200/60 dark:hover:border-gray-700/50 group"
+                >
+                  <span className="text-lg mt-0.5">{card.icon}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa] transition-colors">{card.title}</p>
+                    <p className="text-xs text-[#9aa0a6] mt-0.5">{card.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((msg, i) => (

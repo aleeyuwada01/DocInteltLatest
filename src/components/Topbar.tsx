@@ -1,5 +1,5 @@
-import { Search, Settings, Moon, Sun, LogOut, Activity, Menu, X, Sparkles } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { Search, Settings, Moon, Sun, LogOut, Activity, Menu, X, Sparkles, FileText, Image as ImageIcon, File as FileIcon, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 function StatusDot({ status }: { status: 'ok' | 'error' | 'loading' }) {
   return (
@@ -8,13 +8,19 @@ function StatusDot({ status }: { status: 'ok' | 'error' | 'loading' }) {
 }
 
 export function Topbar({
-  darkMode, setDarkMode, user, onLogout, onSettings, token, onMenuClick
+  darkMode, setDarkMode, user, onLogout, onSettings, token, onMenuClick, onPreviewFile
 }: any) {
   const [health, setHealth] = useState<any>(null);
   const [showHealth, setShowHealth] = useState(false);
   const [healthLoading, setHealthLoading] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
   const healthRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchTimerRef = useRef<any>(null);
 
   const fetchHealth = async () => {
     setHealthLoading(true);
@@ -42,6 +48,78 @@ export function Topbar({
     return () => document.removeEventListener('mousedown', handler);
   }, [showHealth]);
 
+  // Close search on outside click
+  useEffect(() => {
+    if (!searchFocused) return;
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [searchFocused]);
+
+  // Debounced semantic search
+  const performSearch = useCallback(async (query: string) => {
+    if (!query.trim() || !token) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ query, topK: 8 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data.results || []);
+      }
+    } catch { /* ignore */ } finally {
+      setSearching(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    clearTimeout(searchTimerRef.current);
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    searchTimerRef.current = setTimeout(() => performSearch(searchQuery), 400);
+    return () => clearTimeout(searchTimerRef.current);
+  }, [searchQuery]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIdx(prev => Math.min(prev + 1, searchResults.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIdx(prev => Math.max(prev - 1, -1));
+    } else if (e.key === 'Enter' && selectedIdx >= 0 && searchResults[selectedIdx]) {
+      e.preventDefault();
+      const result = searchResults[selectedIdx];
+      onPreviewFile?.(result.file_id);
+      setSearchFocused(false);
+      setSearchQuery('');
+      setSearchResults([]);
+    } else if (e.key === 'Escape') {
+      setSearchFocused(false);
+    }
+  };
+
+  const getFileIcon = (name: string) => {
+    const ext = (name || '').split('.').pop()?.toLowerCase() || '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) return <ImageIcon className="w-4 h-4 text-red-500" />;
+    if (['pdf'].includes(ext)) return <FileText className="w-4 h-4 text-red-500" />;
+    return <FileIcon className="w-4 h-4 text-blue-500" />;
+  };
+
   const overallStatus: 'ok' | 'error' | 'loading' = !health ? 'loading'
     : health.llamaparse?.status === 'ok' && health.gemini?.status === 'ok' ? 'ok'
     : 'error';
@@ -58,15 +136,21 @@ export function Topbar({
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Search bar */}
-      <div className={`relative flex-1 max-w-2xl transition-all duration-300 ${searchFocused ? 'max-w-3xl' : ''}`}>
+      {/* Search bar — hidden on mobile, with semantic search */}
+      <div ref={searchRef} className={`relative flex-1 max-w-2xl transition-all duration-300 hidden md:block ${searchFocused ? 'max-w-3xl' : ''}`}>
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <Search className={`h-4 w-4 transition-colors duration-150 ${searchFocused ? 'text-[#0b57d0] dark:text-[#a8c7fa]' : 'text-[#5f6368] dark:text-[#9aa0a6]'}`} />
+          {searching ? (
+            <Loader2 className="h-4 w-4 text-[#0b57d0] dark:text-[#a8c7fa] animate-spin" />
+          ) : (
+            <Search className={`h-4 w-4 transition-colors duration-150 ${searchFocused ? 'text-[#0b57d0] dark:text-[#a8c7fa]' : 'text-[#5f6368] dark:text-[#9aa0a6]'}`} />
+          )}
         </div>
         <input
           type="text"
+          value={searchQuery}
+          onChange={e => { setSearchQuery(e.target.value); setSelectedIdx(-1); }}
           onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
+          onKeyDown={handleSearchKeyDown}
           className={`block w-full pl-11 pr-4 py-2.5 rounded-2xl text-sm text-[#1a1a2e] dark:text-gray-100 placeholder-[#9aa0a6] dark:placeholder-[#5f6368] transition-all duration-200 border ${
             searchFocused
               ? 'bg-white dark:bg-[#282a2c] shadow-[0_2px_12px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.3)] border-[#0b57d0]/30 dark:border-[#a8c7fa]/30'
@@ -74,9 +158,49 @@ export function Topbar({
           } focus:outline-none`}
           placeholder="Search in Drive…"
         />
-        {searchFocused && (
-          <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#1e1f20] rounded-2xl border border-gray-200/60 dark:border-gray-700/50 shadow-xl p-3 z-30 animate-slide-up">
-            <p className="text-xs text-[#9aa0a6] px-2 pt-1 pb-2 font-medium">AI-powered search coming soon — use the chat panel to search your documents.</p>
+        {/* Search Results Dropdown */}
+        {searchFocused && (searchQuery.trim() || searchResults.length > 0) && (
+          <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#1e1f20] rounded-2xl border border-gray-200/60 dark:border-gray-700/50 shadow-xl z-30 overflow-hidden animate-slide-up">
+            {searching && searchResults.length === 0 ? (
+              <div className="flex items-center gap-2 px-4 py-3">
+                <Loader2 className="w-4 h-4 text-[#0b57d0] animate-spin" />
+                <span className="text-sm text-[#9aa0a6]">Searching your drive…</span>
+              </div>
+            ) : searchResults.length > 0 ? (
+              <div className="max-h-80 overflow-y-auto py-1">
+                {searchResults.map((r, idx) => (
+                  <button
+                    key={r.file_id || idx}
+                    onClick={() => {
+                      onPreviewFile?.(r.file_id);
+                      setSearchFocused(false);
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                    className={`w-full flex items-start gap-3 px-4 py-2.5 text-left hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors ${
+                      selectedIdx === idx ? 'bg-[#f0f4f9] dark:bg-[#282a2c]' : ''
+                    }`}
+                  >
+                    <span className="mt-0.5 shrink-0">{getFileIcon(r.fileName || r.original_name)}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] truncate">{r.fileName || r.original_name}</p>
+                      {r.text && (
+                        <p className="text-xs text-[#9aa0a6] mt-0.5 line-clamp-2">{r.text.substring(0, 120)}{r.text.length > 120 ? '…' : ''}</p>
+                      )}
+                    </div>
+                    {r.score && (
+                      <span className="text-[10px] text-[#9aa0a6] bg-[#f0f4f9] dark:bg-[#282a2c] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5">
+                        {Math.round(r.score * 100)}%
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : searchQuery.trim() && !searching ? (
+              <div className="px-4 py-3 text-sm text-[#9aa0a6]">No results found for "{searchQuery}"</div>
+            ) : (
+              <div className="px-4 py-3 text-xs text-[#9aa0a6]">Type to search your documents with AI…</div>
+            )}
           </div>
         )}
       </div>
@@ -175,26 +299,26 @@ export function Topbar({
           )}
         </div>
 
-        {/* Dark mode toggle */}
+        {/* Dark mode toggle — hidden on mobile (in sidebar instead) */}
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="p-2.5 text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] rounded-xl transition-colors"
+          className="hidden md:inline-flex p-2.5 text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] rounded-xl transition-colors"
           title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
 
-        {/* Settings */}
+        {/* Settings — hidden on mobile (in sidebar instead) */}
         <button
           onClick={onSettings}
-          className="p-2.5 text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] rounded-xl transition-colors"
+          className="hidden md:inline-flex p-2.5 text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] rounded-xl transition-colors"
           title="Settings"
         >
           <Settings className="h-5 w-5" />
         </button>
 
-        {/* Divider */}
-        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+        {/* Divider — hidden on mobile */}
+        <div className="hidden md:block w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
 
         {/* Avatar + logout */}
         <div className="flex items-center gap-1">
