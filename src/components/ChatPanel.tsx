@@ -405,7 +405,33 @@ User's request: ${query}`;
       
     } catch (error: any) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, { role: 'ai', content: 'An error occurred processing your request. ' + (error.message || '') }]);
+      let errMsg = error.message || '';
+      
+      // Look for Gemini Rate Limits or ugly JSON dumps
+      if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
+        errMsg = "AI usage quota temporarily exceeded. Please wait a moment and try again.";
+      } else if (errMsg.startsWith('{') && errMsg.includes('error')) {
+        try {
+          const parsed = JSON.parse(errMsg);
+          if (parsed.error?.message) {
+            errMsg = parsed.error.message;
+            if (errMsg.includes('429') || errMsg.includes('quota')) {
+              errMsg = "AI usage quota temporarily exceeded. Please wait a moment and try again.";
+            }
+          } else {
+             errMsg = "An unexpected error occurred while processing your request.";
+          }
+        } catch { /* if it fails to parse, leave as is, but maybe trim if too long */ }
+      }
+      
+      if (errMsg.length > 200) {
+         errMsg = errMsg.substring(0, 150) + "... (An unexpected system error occurred).";
+      }
+
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        content: `**System Notice:** ${errMsg || 'An error occurred processing your request.'}` 
+      }]);
     } finally {
       setIsLoading(false);
     }
