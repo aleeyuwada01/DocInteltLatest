@@ -214,19 +214,31 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
   const StatusIcon = status.icon;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm md:p-4 animate-in fade-in duration-200" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#1e1f20] rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col md:flex-row border border-gray-200/50 dark:border-gray-700/50 overflow-hidden animate-in zoom-in-95 duration-200 relative"
+        className="bg-white dark:bg-[#1e1f20] rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-6xl h-[95vh] md:max-h-[90vh] flex flex-col md:flex-row border border-gray-200/50 dark:border-gray-700/50 overflow-hidden animate-in slide-in-from-bottom md:zoom-in-95 duration-200 relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} className="md:hidden absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur shadow-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700">
-             <X className="w-5 h-5" />
-        </button>
+        {/* ── Mobile Header (sticky top bar) ── */}
+        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1e1f20] shrink-0 z-10">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className={`p-1.5 rounded-lg bg-gradient-to-br ${accentGradient} shrink-0`}>
+              <Icon className={`w-4 h-4 ${iconColor}`} />
+            </div>
+            <h2 className="text-sm font-semibold text-[#1f1f1f] dark:text-[#e3e3e3] truncate">{originalName}</h2>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-[#282a2c] text-gray-400 hover:text-gray-700 dark:hover:text-white transition-all shrink-0 ml-2">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* ── Mobile scrollable content area ── */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
 
         {/* ── Left: Document Content ── */}
-        <div className="flex-1 flex flex-col min-h-[50vh] bg-white dark:bg-[#1e1f20] md:border-r border-gray-100 dark:border-gray-800">
+        <div className="flex-1 flex flex-col md:min-h-0 bg-white dark:bg-[#1e1f20] md:border-r border-gray-100 dark:border-gray-800">
           {/* Header bar with view toggle & copy */}
-          <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0 z-10">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-xl bg-gradient-to-br ${accentGradient}`}>
                 <Icon className={`w-5 h-5 ${iconColor}`} />
@@ -404,7 +416,7 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
         </div>
 
         {/* ── Right: Metadata Panel ── */}
-        <div className="w-full md:w-80 lg:w-96 bg-[#f8fafd] dark:bg-[#131314] flex flex-col shrink-0">
+        <div className="w-full md:w-80 lg:w-96 bg-[#f8fafd] dark:bg-[#131314] flex flex-col shrink-0 md:overflow-hidden">
           <div className="hidden md:flex items-center justify-end p-4 shrink-0 h-[65px] border-b border-transparent">
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-white dark:hover:bg-[#282a2c] text-gray-400 hover:text-gray-700 dark:hover:text-white transition-all">
               <X className="w-5 h-5" />
@@ -484,6 +496,7 @@ export function ParsedContentModal({ fileId, files, token, onClose }: { fileId: 
           </div>
         </div>
 
+        </div>{/* end mobile scrollable wrapper */}
       </div>
     </div>
   );
