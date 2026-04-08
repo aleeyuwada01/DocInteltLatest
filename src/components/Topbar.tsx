@@ -136,8 +136,8 @@ export function Topbar({
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Search bar — hidden on mobile, with semantic search */}
-      <div ref={searchRef} className={`relative flex-1 max-w-2xl transition-all duration-300 hidden md:block ${searchFocused ? 'max-w-3xl' : ''}`}>
+      {/* Search bar — visible on all screens */}
+      <div ref={searchRef} className={`relative flex-1 max-w-2xl transition-all duration-300 ${searchFocused ? 'max-w-3xl' : ''}`}>
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           {searching ? (
             <Loader2 className="h-4 w-4 text-[#0b57d0] dark:text-[#a8c7fa] animate-spin" />
