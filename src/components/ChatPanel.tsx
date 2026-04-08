@@ -263,6 +263,7 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
 Answer the user's query based on the provided document context.
 If the context doesn't contain the answer, say so, but try to be helpful.
 Always reference which source document the information comes from.
+When you identify the most relevant document, mention its exact filename clearly.
 
 Context:
 ${context || '(No documents found matching the query)'}
@@ -278,26 +279,51 @@ User Query: ${query}`;
 
       let fullResponse = '';
       for await (const chunk of responseStream) {
-        fullResponse += chunk.text;
+        const text = chunk.text || '';
+        fullResponse += text;
+        // Use fullResponse as the single source of truth to prevent duplication
+        const snapshot = fullResponse;
         setMessages(prev => {
           const newMessages = [...prev];
           const lastMessage = newMessages[newMessages.length - 1];
           if (lastMessage && lastMessage.role === 'ai') {
-            lastMessage.content += chunk.text;
+            lastMessage.content = snapshot;
           }
           return newMessages;
         });
       }
       
-      // Primary = highest score, Related = other files with reasonable scores
-      const [primarySource, ...relatedSources] = sourceFiles;
+      // Determine primary source by checking which file the AI actually referenced
+      // rather than relying solely on embedding similarity score
+      const responseLower = fullResponse.toLowerCase();
+      let primarySource = sourceFiles[0] || null;
+      
+      // Check which source file names appear in the AI's response
+      for (const src of sourceFiles) {
+        const srcName = (src.name || '').toLowerCase();
+        if (srcName && responseLower.includes(srcName)) {
+          primarySource = src;
+          break; // First match in the AI response = most relevant
+        }
+        // Also check partial name match (without extension)
+        const baseName = srcName.replace(/\.[^.]+$/, '');
+        if (baseName.length > 5 && responseLower.includes(baseName)) {
+          primarySource = src;
+          break;
+        }
+      }
+      
+      // Related = other source files excluding the primary
+      const relatedSources = sourceFiles
+        .filter(s => s.id !== primarySource?.id)
+        .filter(s => s.score > 0.25);
 
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
         if (lastMessage && lastMessage.role === 'ai') {
-          lastMessage.primarySource = primarySource || null;
-          lastMessage.relatedSources = relatedSources.filter(s => s.score > 0.25); // Only show truly related 
+          lastMessage.primarySource = primarySource;
+          lastMessage.relatedSources = relatedSources;
         }
         return newMessages;
       });
