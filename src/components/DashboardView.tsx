@@ -296,7 +296,7 @@ export function DashboardView({ user }: { user: any }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
-                    <span className="text-sm font-medium text-gray-200">Gemini LMM</span>
+                    <span className="text-sm font-medium text-gray-200">LLM</span>
                   </div>
                   <span className="text-xs font-bold px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-md">Stable</span>
                 </div>
