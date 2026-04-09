@@ -1,0 +1,5 @@
+- `[ ]` Create `src/components/LegalView.tsx` with high-fidelity content
+- `[ ]` Integrate legal routing into `src/App.tsx`
+- `[ ]` Update `LandingPage.tsx` footer links
+- `[ ]` Update `Login.tsx` footer links
+- `[ ]` Final verification and polish

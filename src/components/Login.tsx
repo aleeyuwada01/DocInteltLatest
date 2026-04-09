@@ -15,8 +15,12 @@ const REGISTER_FEATURES = [
 ];
 
 export function Login({
-  onLogin, onBack
-}: { onLogin: (token: string, user: any) => void; onBack?: () => void }) {
+  onLogin, onBack, onLegal
+}: { 
+  onLogin: (token: string, user: any) => void; 
+  onBack?: () => void;
+  onLegal?: (mode: 'privacy' | 'terms') => void;
+}) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -310,9 +314,9 @@ export function Login({
                 </div>
                 <span className="text-xs text-[#9aa0a6] leading-relaxed">
                   I agree to the{' '}
-                  <span className="text-[#0b57d0] dark:text-[#a8c7fa] hover:underline cursor-pointer">Terms of Service</span>
+                  <button type="button" onClick={() => onLegal?.('terms')} className="text-[#0b57d0] dark:text-[#a8c7fa] hover:underline cursor-pointer">Terms of Service</button>
                   {' '}and{' '}
-                  <span className="text-[#0b57d0] dark:text-[#a8c7fa] hover:underline cursor-pointer">Privacy Policy</span>
+                  <button type="button" onClick={() => onLegal?.('privacy')} className="text-[#0b57d0] dark:text-[#a8c7fa] hover:underline cursor-pointer">Privacy Policy</button>
                 </span>
               </label>
             )}

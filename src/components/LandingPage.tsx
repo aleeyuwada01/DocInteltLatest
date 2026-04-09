@@ -138,7 +138,13 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 /* ── Landing Page ─────────────────────────────────────────────── */
-export function LandingPage({ onGetStarted, onSignIn }: { onGetStarted: () => void; onSignIn: () => void }) {
+export interface LandingPageProps {
+  onGetStarted: () => void;
+  onSignIn: () => void;
+  onLegal: (mode: 'privacy' | 'terms') => void;
+}
+
+export function LandingPage({ onGetStarted, onSignIn, onLegal }: LandingPageProps) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -328,8 +334,8 @@ export function LandingPage({ onGetStarted, onSignIn }: { onGetStarted: () => vo
             <span className="text-xs text-gray-400">© {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center gap-5">
-            <a href="#" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Privacy</a>
-            <a href="#" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Terms</a>
+            <button onClick={() => onLegal('privacy')} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Privacy</button>
+            <button onClick={() => onLegal('terms')} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Terms</button>
           </div>
         </div>
       </footer>

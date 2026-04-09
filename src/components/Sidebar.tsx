@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export function Sidebar({
   currentView, setCurrentView, storage, onUpload, onFolderUpload,
   onFolderCreate, currentFolderId, token, user, onUpgrade, isOpen, onClose,
-  darkMode, setDarkMode, onSettings
+  darkMode, setDarkMode, onSettings, onLegal
 }: any) {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
@@ -286,9 +286,15 @@ export function Sidebar({
             onClick={onUpgrade}
             className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-[#0b57d0] dark:text-[#a8c7fa] border border-[#0b57d0]/20 dark:border-[#a8c7fa]/20 rounded-xl hover:bg-[#e8f0fe] dark:hover:bg-[#a8c7fa]/10 transition-colors"
           >
-            <UploadCloud className="w-3.5 h-3.5" />
+            <UploadCloud size={14} />
             Get more storage
           </button>
+
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 px-1">
+            <button onClick={() => onLegal?.('privacy')} className="text-[10px] uppercase font-bold tracking-widest text-[#9aa0a6] hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] transition-colors">Privacy</button>
+            <button onClick={() => onLegal?.('terms')} className="text-[10px] uppercase font-bold tracking-widest text-[#9aa0a6] hover:text-[#0b57d0] dark:hover:text-[#a8c7fa] transition-colors">Terms</button>
+            <span className="text-[10px] text-[#c4c7c5] ml-auto">V1.0</span>
+          </div>
         </div>
       </aside>
 

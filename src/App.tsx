@@ -20,6 +20,7 @@ import { ActivityFeed } from './components/ActivityFeed';
 import { TagsManager } from './components/TagsManager';
 import { ShareModal } from './components/ShareModal';
 import { ShareView } from './components/ShareView';
+import { LegalView } from './components/LegalView';
 import { Toaster, toast } from 'sonner';
 import { supabase, mapFile, mapFolder } from './lib/supabaseClient';
 import { logActivity } from './lib/activity';
@@ -52,6 +53,7 @@ export default function App() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isTagsOpen, setIsTagsOpen] = useState(false);
   const [activeFileForAction, setActiveFileForAction] = useState<any>(null);
+  const [legalMode, setLegalMode] = useState<'privacy' | 'terms' | null>(null);
 
   // Upload queue
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
@@ -575,7 +577,13 @@ export default function App() {
   // Expose compare opener for sidebar
   (window as any).__OPEN_COMPARE = () => setIsCompareOpen(true);
 
+  if (legalMode) {
+    return <LegalView mode={legalMode} onBack={() => setLegalMode(null)} />;
+  }
+
   if (!session) {
+    // ── Render Logic ───────────────────────────────────────────────────────
+
     if (isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-[#f8fafd] dark:bg-[#131314]">
@@ -593,6 +601,7 @@ export default function App() {
           <LandingPage
             onGetStarted={() => setUnauthView('auth')}
             onSignIn={() => setUnauthView('auth')}
+            onLegal={(m) => setLegalMode(m)}
           />
           <Toaster position="top-center" theme={darkMode ? 'dark' : 'light'} />
         </>
@@ -600,7 +609,11 @@ export default function App() {
     }
     return (
       <>
-        <Login onLogin={handleLogin} onBack={() => setUnauthView('landing')} />
+        <Login 
+          onLogin={handleLogin} 
+          onBack={() => setUnauthView('landing')} 
+          onLegal={(m) => setLegalMode(m)}
+        />
         <Toaster position="top-center" theme={darkMode ? 'dark' : 'light'} />
       </>
     );
@@ -624,6 +637,7 @@ export default function App() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         onSettings={() => setIsSettingsOpen(true)}
+        onLegal={(m) => setLegalMode(m)}
       />
       
       <div className="flex-1 flex flex-col min-w-0 bg-[#f8fafd] dark:bg-[#131314] transition-colors duration-200">
