@@ -482,13 +482,14 @@ export default function App() {
 
   // ── Rename file ───────────────────────────────────────────────────────────
   const handleRenameFile = async (fileId: string, newName: string) => {
-    const { error } = await supabase.from('files').update({ original_name: newName, name: newName }).eq('id', fileId);
+    // Note: The files table relies on original_name, not 'name'
+    const { error } = await supabase.from('files').update({ original_name: newName }).eq('id', fileId);
     if (!error) {
-      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, originalName: newName, original_name: newName, name: newName } : f));
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, originalName: newName, original_name: newName } : f));
       toast.success('File renamed');
       logActivity(user.id, fileId, 'rename_file', { newName });
     } else {
-      toast.error('Failed to rename');
+      toast.error('Failed to rename: ' + error.message);
     }
   };
 
@@ -497,7 +498,7 @@ export default function App() {
     const { error } = await supabase.from('files').update({ folder_id: folderId }).eq('id', fileId);
     if (!error) {
       toast.success(folderId ? 'File moved to folder' : 'File moved to root');
-      fetchDrive();
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, folder_id: folderId } : f));
       const targetFolderName = folderId ? folders.find(f => f.id === folderId)?.name : 'Root';
       logActivity(user.id, fileId, 'move_file', { targetFolderName });
     } else {
@@ -513,32 +514,58 @@ export default function App() {
   };
 
   // ── Drag and Drop ─────────────────────────────────────────────────────────
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.types.includes('Files')) {
-      setIsDragging(true);
-    }
-  };
+  useEffect(() => {
+    if (!session) return;
+    
+    let dragCounter = 0;
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only close if leaving the container entirely
-    if (e.currentTarget === e.target) {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer?.types.includes('Files')) {
+        dragCounter++;
+        if (dragCounter === 1) setIsDragging(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer?.types.includes('Files')) {
+        dragCounter--;
+        if (dragCounter === 0) setIsDragging(false);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter = 0;
       setIsDragging(false);
-    }
-  };
+      
+      const droppedFiles = Array.from(e.dataTransfer?.files || []);
+      if (droppedFiles.length > 0) {
+        handleUpload(droppedFiles);
+      }
+    };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) {
-      handleUpload(droppedFiles);
-    }
-  };
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('drop', handleDrop);
+    };
+  }, [session, currentFolderId]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const token = session?.access_token || null;
@@ -610,9 +637,6 @@ export default function App() {
         
         <div
           className={`flex-1 overflow-hidden p-2 md:p-4 pt-0 flex flex-row gap-4 min-h-0 relative transition-all duration-200 ${isDragging ? 'ring-2 ring-[#0b57d0] ring-inset rounded-2xl' : ''}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
         >
           {/* Drag overlay */}
           {isDragging && (
