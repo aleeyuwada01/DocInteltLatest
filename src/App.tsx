@@ -208,7 +208,8 @@ export default function App() {
         foldersQuery = foldersQuery.not('trashed_at', 'is', null);
       } else if (currentView === 'starred') {
         filesQuery = filesQuery.is('trashed_at', null).not('starred_at', 'is', null);
-        foldersQuery = foldersQuery.is('trashed_at', null).not('starred_at', 'is', null);
+        // Folders don't support starring in the schema currently, so return an empty query
+        foldersQuery = foldersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
       } else {
         filesQuery = filesQuery.is('trashed_at', null);
         foldersQuery = foldersQuery.is('trashed_at', null);
@@ -543,7 +544,11 @@ export default function App() {
     if (isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-[#f8fafd] dark:bg-[#131314]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="relative w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-t-2 border-l-2 border-blue-500 animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-b-2 border-r-2 border-purple-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+            <div className="absolute inset-4 rounded-full bg-blue-500/20 blur animate-pulse"></div>
+          </div>
         </div>
       );
     }
@@ -620,7 +625,11 @@ export default function App() {
           <div className="flex-1 h-full bg-white dark:bg-[#1e1f20] rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-200/50 dark:border-gray-800/50 min-h-0">
             {isDriveLoading ? (
               <div className="flex-1 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-t-2 border-l-2 border-blue-500 animate-spin"></div>
+                  <div className="absolute inset-2 rounded-full border-b-2 border-r-2 border-purple-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                  <div className="absolute inset-4 rounded-full bg-blue-500/20 blur animate-pulse"></div>
+                </div>
               </div>
             ) : currentView === 'dashboard' ? (
               <DashboardView user={user} />

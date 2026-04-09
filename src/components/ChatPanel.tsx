@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { GoogleGenAI } from '@google/genai';
 import { supabase } from '../lib/supabaseClient';
 import { format, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ChatMessage {
   id?: string;
@@ -465,12 +466,20 @@ User's request: ${query}`;
   // ── Collapsed FAB ─────────────────────────────────────────────────────────
   if (!isOpen) {
     return (
-      <button 
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-8 right-8 p-4 bg-white dark:bg-[#37393b] text-[#444746] dark:text-gray-200 rounded-full shadow-lg hover:shadow-xl hover:bg-[#f8fafd] dark:hover:bg-[#4a4c4f] hover:-translate-y-1 transition-all duration-300 z-50 group flex items-center justify-center border border-gray-200/50 dark:border-gray-700"
-      >
-        <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform duration-300" />
-      </button>
+      <AnimatePresence>
+        <motion.button 
+          initial={{ scale: 0, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-8 right-8 px-6 py-4 bg-white/90 dark:bg-[#1e1f20]/90 backdrop-blur-2xl text-blue-600 dark:text-blue-400 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/40 dark:border-gray-800/60 z-50 group flex items-center justify-center gap-3 overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <MessageSquare className="w-5 h-5 relative z-10" />
+          <span className="font-bold relative z-10 tracking-wide text-gray-900 dark:text-white">Ask DocIntel AI</span>
+        </motion.button>
+      </AnimatePresence>
     );
   }
 
@@ -480,18 +489,23 @@ User's request: ${query}`;
     const searchGroups = groupByDate(searchHistory, 'created_at');
 
     return (
-      <aside className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] h-[85vh] md:relative md:inset-auto md:z-auto md:w-80 bg-white/95 dark:bg-[#1e1f20]/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 flex flex-col shadow-2xl md:shadow-sm md:h-full transition-all duration-300 rounded-2xl overflow-hidden shrink-0 min-h-0">
+      <motion.aside 
+        initial={{ x: 20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 20, opacity: 0 }}
+        className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] h-[85vh] md:relative md:inset-auto md:z-auto md:w-[340px] bg-white/80 dark:bg-[#121314]/80 backdrop-blur-2xl border border-white/40 dark:border-gray-800/60 flex flex-col shadow-[0_8px_30px_rgb(0,0,0,0.12)] lg:h-full rounded-3xl overflow-hidden shrink-0 min-h-0"
+      >
         {/* Header */}
-        <div className="p-4 border-b border-gray-100 dark:border-gray-800/50 flex justify-between items-center bg-white dark:bg-[#1e1f20]">
-          <div className="flex items-center gap-2 text-[#1f1f1f] dark:text-[#e3e3e3]">
-            <History className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span className="font-medium">History</span>
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800/30 flex justify-between items-center bg-transparent">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+            <History className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+            <span className="font-bold tracking-tight">Timeline</span>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={startNewChat} className="p-1.5 rounded-lg hover:bg-[#f0f4f9] dark:hover:bg-[#37393b] text-[#444746] dark:text-[#c4c7c5] transition-colors" title="New chat">
+            <button onClick={startNewChat} className="p-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 text-gray-500 transition-colors" title="New thread">
               <Plus className="w-4 h-4" />
             </button>
-            <button onClick={() => setShowHistory(false)} className="p-1.5 rounded-lg hover:bg-[#f0f4f9] dark:hover:bg-[#37393b] text-[#444746] dark:text-[#c4c7c5] transition-colors">
+            <button onClick={() => setShowHistory(false)} className="p-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 text-gray-500 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -611,80 +625,97 @@ User's request: ${query}`;
             )
           )}
         </div>
-      </aside>
+      </motion.aside>
     );
   }
 
   // ── Main Chat Panel ───────────────────────────────────────────────────────
   return (
-    <aside className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] h-[85vh] md:relative md:inset-auto md:z-auto md:w-80 bg-white/95 dark:bg-[#1e1f20]/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 flex flex-col shadow-2xl md:shadow-sm md:h-full transition-all duration-300 rounded-2xl overflow-hidden shrink-0 min-h-0">
-      <div className="p-4 border-b border-gray-100 dark:border-gray-800/50 flex justify-between items-center bg-white dark:bg-[#1e1f20]">
-        <div className="flex items-center gap-2 text-[#1f1f1f] dark:text-[#e3e3e3]">
-          <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <span className="font-medium">DocIntel AI</span>
+    <AnimatePresence>
+      <motion.aside 
+        initial={{ x: 20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 20, opacity: 0 }}
+        className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] h-[85vh] md:relative md:inset-auto md:z-auto md:w-[340px] bg-white/80 dark:bg-[#121314]/80 backdrop-blur-2xl border border-white/40 dark:border-gray-800/60 flex flex-col shadow-[0_8px_30px_rgb(0,0,0,0.12)] lg:h-full rounded-3xl overflow-hidden shrink-0 min-h-0"
+      >
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800/30 flex justify-between items-center bg-transparent">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+            <span className="font-bold tracking-tight">DocIntel Core</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => { setShowHistory(true); loadSessions(); loadSearchHistory(); }} className="p-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 text-gray-500 transition-colors" title="History">
+              <History className="w-4 h-4" />
+            </button>
+            <button onClick={startNewChat} className="p-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 text-gray-500 transition-colors" title="New thread">
+              <Plus className="w-4 h-4" />
+            </button>
+            <button onClick={() => setIsOpen(false)} className="p-2 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 text-gray-500 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => { setShowHistory(true); loadSessions(); loadSearchHistory(); }} className="p-1.5 rounded-lg hover:bg-[#f0f4f9] dark:hover:bg-[#37393b] text-[#444746] dark:text-[#c4c7c5] transition-colors" title="Chat history">
-            <History className="w-4 h-4" />
-          </button>
-          <button onClick={startNewChat} className="p-1.5 rounded-lg hover:bg-[#f0f4f9] dark:hover:bg-[#37393b] text-[#444746] dark:text-[#c4c7c5] transition-colors" title="New chat">
-            <Plus className="w-4 h-4" />
-          </button>
-          <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-[#f0f4f9] dark:hover:bg-[#37393b] text-[#444746] dark:text-[#c4c7c5] transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-[#1e1f20]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 bg-transparent">
         {messages.length === 0 ? (
-          <div className="text-center text-[#444746] dark:text-[#c4c7c5] mt-6 px-2">
-            <Sparkles className="w-10 h-10 mx-auto mb-3 text-blue-600/20 dark:text-blue-400/20" />
-            <h3 className="text-base font-medium text-[#1f1f1f] dark:text-[#e3e3e3] mb-4">How can I help you today?</h3>
-            <div className="grid grid-cols-1 gap-2 text-left">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center text-gray-500 mt-6 px-2">
+            <div className="w-16 h-16 mx-auto mb-4 relative flex items-center justify-center">
+              <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse"></div>
+              <Sparkles className="w-8 h-8 text-blue-500 relative z-10" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 tracking-tight">How can I assist?</h3>
+            <div className="grid grid-cols-1 gap-2.5 text-left">
               {[
-                { icon: '🔍', title: 'Find specific files', desc: 'Search by topic, keyword, or description', prompt: 'Find documents containing keywords about...' },
-                { icon: '📊', title: 'Analyze my documents', desc: 'Get summaries and key insights', prompt: 'Summarize the key insights from my uploaded reports' },
+                { icon: '🔍', title: 'Find specific records', desc: 'Search by topic or entities', prompt: 'Find documents containing keywords about...' },
+                { icon: '📊', title: 'Synthesize data', desc: 'Get summaries across files', prompt: 'Summarize the key insights from my uploaded reports' },
                 { icon: '🖼️', title: 'Locate images', desc: 'Find images matching a description', prompt: 'Find images or screenshots that show...' },
-                { icon: '📁', title: 'Compare documents', desc: 'Cross-reference content across files', prompt: 'Compare the content across my recent documents' },
-              ].map((card) => (
-                <button
+                { icon: '📁', title: 'Cross-reference', desc: 'Correlate content domains', prompt: 'Compare the content across my recent documents' },
+              ].map((card, i) => (
+                <motion.button
                   key={card.title}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
                   onClick={() => setInput(card.prompt)}
-                  className="flex items-start gap-3 p-3 rounded-xl text-left hover:bg-[#f0f4f9] dark:hover:bg-[#282a2c] transition-colors border border-transparent hover:border-gray-200/60 dark:hover:border-gray-700/50 group"
+                  className="flex items-start gap-3 p-3.5 rounded-2xl text-left bg-white/50 dark:bg-[#1e1f20]/50 hover:bg-white dark:hover:bg-[#282a2c] shadow-sm hover:shadow-md transition-all border border-white/40 dark:border-gray-700/50 group"
                 >
-                  <span className="text-lg mt-0.5">{card.icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#1f1f1f] dark:text-[#e3e3e3] group-hover:text-[#0b57d0] dark:group-hover:text-[#a8c7fa] transition-colors">{card.title}</p>
-                    <p className="text-xs text-[#9aa0a6] mt-0.5">{card.desc}</p>
+                  <span className="text-lg bg-gray-50 dark:bg-black/20 p-2 rounded-xl group-hover:scale-110 transition-transform">{card.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{card.title}</p>
+                    <p className="text-[11px] text-gray-500 leading-tight mt-0.5">{card.desc}</p>
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
         ) : (
           messages.map((msg, i) => (
-            <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-2 ${msg.role === 'user' ? 'bg-[#c2e7ff] dark:bg-[#004a77] text-[#001d35] dark:text-[#c2e7ff] rounded-tr-sm' : 'bg-[#f0f4f9] dark:bg-[#282a2c] text-[#1f1f1f] dark:text-[#e3e3e3] rounded-tl-sm'}`}>
+            <motion.div 
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              key={i} 
+              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+            >
+              <div className={`max-w-[88%] rounded-3xl px-5 py-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] ${msg.role === 'user' ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm' : 'bg-white dark:bg-[#1e1f20] border border-gray-100 dark:border-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-sm'}`}>
                 {msg.role === 'ai' ? (
-                  <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-white dark:prose-pre:bg-[#1e1f20] prose-pre:text-[#1f1f1f] dark:prose-pre:text-[#e3e3e3] dark:prose-invert">
+                  <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-gray-50 dark:prose-pre:bg-black/30 text-[13px] dark:prose-invert">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
-                  msg.content
+                  <p className="text-[13px] font-medium leading-relaxed">{msg.content}</p>
                 )}
               </div>
               
               {/* Primary source with confidence score */}
               {msg.primarySource && (
-                <div className="mt-2 w-full max-w-[85%]">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#444746] dark:text-[#c4c7c5] mb-1.5 ml-0.5">Source</p>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2.5 w-full max-w-[85%]">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 ml-1">Verified Source</p>
                   <button
                     onClick={() => onPreviewFile(msg.primarySource.id)}
-                    className="relative flex items-center gap-2 text-xs text-[#0b57d0] dark:text-[#a8c7fa] px-3 py-2 rounded-xl hover:brightness-95 active:scale-[0.98] transition-all border border-[#0b57d0]/15 dark:border-[#a8c7fa]/20 w-full overflow-hidden"
+                    className="relative flex items-center gap-2.5 text-xs text-blue-600 dark:text-blue-400 px-3 py-2.5 rounded-xl bg-white/60 dark:bg-[#1e1f20]/60 hover:bg-white dark:hover:bg-[#282a2c] shadow-sm active:scale-[0.98] transition-all border border-blue-100/50 dark:border-blue-900/30 w-full overflow-hidden"
                     style={{
                       background: msg.primarySource.score
-                        ? `linear-gradient(90deg, rgba(34,197,94,${Math.min(msg.primarySource.score * 0.3, 0.25)}) 0%, rgba(34,197,94,${Math.min(msg.primarySource.score * 0.1, 0.08)}) 100%)`
+                        ? `linear-gradient(90deg, rgba(59,130,246,${Math.min(msg.primarySource.score * 0.1, 0.15)}) 0%, transparent 100%)`
                         : undefined,
                     }}
                   >
@@ -704,50 +735,48 @@ User's request: ${query}`;
                       <span className="text-[10px] opacity-60 shrink-0">Best match</span>
                     )}
                   </button>
-                </div>
+                </motion.div>
               )}
 
               {/* Related sources */}
               {msg.relatedSources && msg.relatedSources.length > 0 && (
                 <RelatedSources sources={msg.relatedSources} onPreviewFile={onPreviewFile} />
               )}
-            </div>
+            </motion.div>
           ))
         )}
         {isLoading && (
-          <div className="flex items-start">
-            <div className="bg-[#f0f4f9] dark:bg-[#282a2c] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2 text-[#444746] dark:text-[#c4c7c5]">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Thinking...</span>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-start">
+            <div className="bg-white/60 dark:bg-[#1e1f20]/60 backdrop-blur rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-3 text-gray-500 shadow-sm border border-gray-100 dark:border-gray-800">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              <span className="text-xs font-bold uppercase tracking-widest">Processing...</span>
             </div>
-          </div>
+          </motion.div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 bg-white dark:bg-[#1e1f20] border-t border-gray-100 dark:border-gray-800/50">
-        <div className="relative flex items-center">
+      <div className="px-4 py-3 bg-[#f8fafd]/80 dark:bg-[#121314]/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/80">
+        <div className="relative flex items-center bg-white dark:bg-[#1e1f20] border border-gray-200 dark:border-gray-700 shadow-sm rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask DocIntel AI..."
-            className="w-full pl-4 pr-12 py-3 bg-[#f0f4f9] dark:bg-[#282a2c] border-transparent rounded-full focus:bg-white dark:focus:bg-[#37393b] focus:shadow-[0_1px_1px_rgba(0,0,0,0.1)] transition-all text-sm text-[#1f1f1f] dark:text-[#e3e3e3] placeholder-[#444746] dark:placeholder-[#c4c7c5] focus:outline-none"
+            placeholder="Ask DocIntel Core..."
+            className="w-full pl-5 pr-12 py-3.5 bg-transparent border-none text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none"
           />
           <button 
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="absolute right-2 p-2 text-[#0b57d0] dark:text-[#a8c7fa] rounded-full hover:bg-[#e9eef6] dark:hover:bg-[#37393b] disabled:opacity-50 transition-colors"
+            className="absolute right-1.5 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-0 disabled:scale-75 transition-all"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4 translate-x-[1px] translate-y-[-1px]" />
           </button>
         </div>
-        <div className="text-center mt-2">
-          <span className="text-[10px] text-[#444746] dark:text-[#c4c7c5]">DocIntel AI can make mistakes. Check important info.</span>
-        </div>
       </div>
-    </aside>
+    </motion.aside>
+    </AnimatePresence>
   );
 }
 
