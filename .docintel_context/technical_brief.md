@@ -66,7 +66,7 @@ DocIntel implements a **Zero-Leak Policy**:
 
 - **Frontend:** React 19 (Vite) + TypeScript + Framer Motion.
 - **Backend:** Supabase (PostgreSQL 17) + RLS security.
-- **AI:** Google Gemini 1.5 Pro + text-embedding-004.
+- **AI:** Google Gemini 2.5 Pro + text-embedding-004.
 - **Parsing:** LlamaParse Structural Extraction.
 </details>
 

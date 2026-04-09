@@ -151,9 +151,7 @@ export function LandingPage({ onGetStarted, onSignIn }: { onGetStarted: () => vo
     <div className="min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden">
 
       {/* ── Nav ───────────────────────────────────────────────── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm' : 'bg-transparent'
-      }`}>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm transition-all duration-300">
         <div className="max-w-5xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
@@ -176,51 +174,74 @@ export function LandingPage({ onGetStarted, onSignIn }: { onGetStarted: () => vo
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="relative min-h-[100svh] flex flex-col items-center justify-center text-center px-5 pt-24 pb-12 overflow-hidden">
-
+      <section className="relative h-screen min-h-[700px] flex flex-col items-center justify-center text-center px-5 overflow-hidden">
+        
+        {/* Background Image with Dark Overlay */}
+        <div className="absolute inset-0 z-0">
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
+            style={{ backgroundImage: 'url("https://i.ibb.co/jCFR1ZG/bgdoc.png")' }}
+          />
+          {/* Subtle dark tint to make neon pop and text readable */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+        </div>
 
         {/* Soft glow */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[500px] h-[300px] bg-gradient-radial from-blue-50/70 via-transparent to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-1">
+          <div className="w-[800px] h-[500px] bg-gradient-radial from-blue-500/10 via-transparent to-transparent rounded-full blur-3xl opacity-40" />
         </div>
 
-        <div className="relative z-10 w-full max-w-3xl mx-auto">
-          {/* Headline */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08] text-gray-900 mb-5">
-            Your documents,<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1a56e8] via-[#a142f4] to-[#ea4335]">
-              intelligently
-            </span>{' '}organized.
-          </h1>
+        <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center h-full justify-center pt-16">
+          <div className="flex-1 flex flex-col items-center justify-center">
+            {/* Headline */}
+            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.95] text-white mb-6 drop-shadow-2xl">
+              Your documents,<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4285f4] via-[#a142f4] to-[#34a853]">
+                intelligently
+              </span>{' '}organized.
+            </h1>
 
-          <p className="text-base sm:text-lg text-gray-500 max-w-xl mx-auto leading-relaxed mb-8 sm:mb-10">
-            Upload any document — PDFs, images, spreadsheets — and instantly search,
-            summarize, and chat with your files using state-of-the-art AI.
-          </p>
+            <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed mb-10 drop-shadow-md">
+              Upload any document — PDFs, images, spreadsheets — and instantly search,
+              summarize, and chat with your files using state-of-the-art AI.
+            </p>
 
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button onClick={onGetStarted}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 text-base font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-full px-8 py-3.5 transition-all shadow-lg hover:shadow-xl active:scale-[0.97]">
-              Get started free
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button onClick={onSignIn}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 text-base font-semibold text-gray-700 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-full px-8 py-3.5 transition-all shadow-sm hover:shadow-md">
-              Sign in
-            </button>
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+              <button onClick={onGetStarted}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-lg font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-full px-10 py-4 transition-all shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_rgba(59,130,246,0.7)] active:scale-[0.97]">
+                Get started free
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <button onClick={onSignIn}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-lg font-bold text-white bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 rounded-full px-10 py-4 transition-all shadow-lg">
+                Sign in
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-400 mt-6 font-medium">No credit card required · Free to start</p>
           </div>
-
-          <p className="text-xs text-gray-400 mt-4">No credit card required · Free to start</p>
         </div>
+      </section>
 
-        <div className="relative z-10 w-full max-w-5xl mx-auto hidden sm:block">
+      {/* ── Innovation Section (Second Page) ──────────────────── */}
+      <section className="bg-white py-12 sm:py-20 px-5 border-b border-gray-100">
+        <div className="max-w-5xl mx-auto text-center mb-12">
+            <h2 className="text-3xl sm:text-5xl font-black text-gray-900 tracking-tight mb-4">
+                The Intelligence Engine
+            </h2>
+            <p className="text-gray-500 text-lg sm:text-xl max-w-2xl mx-auto">
+                Transforming raw files into structured semantic insights in milliseconds.
+            </p>
+        </div>
+        <div className="w-full max-w-5xl mx-auto hidden sm:block">
           <AIProcessingAnimation />
         </div>
       </section>
 
       {/* ── Stats ─────────────────────────────────────────────── */}
-      <section className="bg-[#f8fafd] border-y border-gray-100 py-12 sm:py-14">
+      <section className="bg-[#f8fafd] border-b border-gray-100 py-12 sm:py-14">
         <div className="max-w-4xl mx-auto px-5 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
           <Stat value="10x" label="Faster document search" />
           <Stat value="99.9%" label="Parsing accuracy" />
