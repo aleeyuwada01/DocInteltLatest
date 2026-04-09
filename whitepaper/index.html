@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocIntel Technical Whitepaper | Semantic Knowledge Retrieval</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="A formal technical exploration of DocIntel architecture, semantic RAG pipelines, and enterprise document intelligence.">
+</head>
+<body>
+
+    <header class="hero">
+        <div class="container">
+            <span class="badge">Technical Brief V1.0</span>
+            <h1 class="title">Redefining Semantic Knowledge Retrieval for the Modern Enterprise</h1>
+            <p class="subtitle">A formal technical exploration of the DocIntel architecture, high-fidelity parsing pipelines, and secure RAG implementations.</p>
+            
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <label>Authors</label>
+                    <span>DocIntel Engineering</span>
+                </div>
+                <div class="meta-item">
+                    <label>Date</label>
+                    <span>April 2026</span>
+                </div>
+                <div class="meta-item">
+                    <label>Classification</label>
+                    <span>Technical Whitepaper</span>
+                </div>
+                <div class="meta-item">
+                    <label>Subject</label>
+                    <span>AI / Data Architecture</span>
+                </div>
+            </div>
+
+            <img src="hero.png" alt="Neural Knowledge Map" class="hero-img">
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <section id="abstract">
+            <h2>Abstract</h2>
+            <p>
+                As enterprise data grows exponentially, the challenge shifts from storage to accessibility. Traditional keyword-based retrieval systems fail to capture the nuanced intent of complex documentation. DocIntel introduces a sophisticated <strong>Hybrid Retrieval Engine</strong> that combines semantic vector embeddings with high-fidelity structural parsing. This paper outlines the architecture required to achieve near-zero hallucination retrieval while maintaining strict enterprise-grade privacy and data isolation.
+            </p>
+        </section>
+
+        <section id="problem">
+            <h2>The Unstructured Data Crisis</h2>
+            <p>
+                Market analysis reveals that over 80% of technical and corporate data resides in unstructured formats—PDFs, scanned images, and complex spreadsheets. Conventional LLM approaches often struggle with the "Loss in the Middle" phenomenon and poor data extraction from non-linear layouts (tables, charts).
+            </p>
+            <div class="highlight-box">
+                <strong>The DocIntel Difference:</strong> We treat document parsing not as an OCR task, but as a structural reconstruction task. By mapping documents into semantic fragments before embedding, we preserve the contextual hierarchy of information.
+            </div>
+        </section>
+
+        <section id="uniqueness">
+            <h2>Uniqueness & Core Innovation</h2>
+            <p>
+                DocIntel’s competitive advantage lies in its three-pillar intelligence framework:
+            </p>
+            <ul>
+                <li><strong>Structural Awareness:</strong> Utilizing LlamaParse to reconstruct tables and charts into markdown before they reach the vector engine.</li>
+                <li><strong>Contextual Pinning:</strong> A proprietary state-management system that allows users to "pin" context, reducing the vector search space and increasing precision by 40%.</li>
+                <li><strong>Atomic Security:</strong> A "Zero-Leak" sharing protocol that utilizes temporary signed URLs to isolate document data from public internet exposure.</li>
+            </ul>
+        </section>
+
+        <section id="market">
+            <h2>Target Market & Sector Utilization</h2>
+            <p>DocIntel is engineered for high-stakes environments where accuracy and security are non-negotiable.</p>
+            
+            <div class="market-grid">
+                <div class="market-card">
+                    <h3>Legal & Compliance</h3>
+                    <p>Accelerating e-discovery and contract auditing through automated clause detection and semantic cross-referencing.</p>
+                </div>
+                <div class="market-card">
+                    <h3>Financial Research</h3>
+                    <p>Extracting granular performance data from annual reports and complex tabular financial disclosures.</p>
+                </div>
+                <div class="market-card">
+                    <h3>Gov & Public Sector</h3>
+                    <p>Managing massive internal knowledge bases with strict security mandates and multi-departmental RLS isolation.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="security">
+            <h2>Conclusion</h2>
+            <p>
+                The future of document management is not just in storage, but in active intelligence. DocIntel provides the bridge between raw data and actionable insight, ensuring that enterprise knowledge is never more than a natural language query away.
+            </p>
+        </section>
+
+        <details>
+            <summary>Appendix: Technical Specifications & Infrastructure</summary>
+            <div class="appendix-content">
+                <p>For technical stakeholders, the DocIntel platform is built upon a high-performance, modern stack designed for rapid iteration and resilience:</p>
+                <ul>
+                    <li><strong>Core Framework:</strong> React 19 (Vite) utilizing Concurrent Rendering and TypeScript for type-safety.</li>
+                    <li><strong>Backend Infrastructure:</strong> Supabase/PostgreSQL 17 with Row Level Security (RLS) as the primary security layer.</li>
+                    <li><strong>Intelligence Model:</strong> Google Gemini 1.5 Pro Integrated via native @google/genai SDK.</li>
+                    <li><strong>Vector Engine:</strong> pgvector for 768-dimension semantic similarity matching.</li>
+                    <li><strong>State Management:</strong> Custom React Context providers for global drag-and-drop and real-time activity tracking.</li>
+                </ul>
+            </div>
+        </details>
+
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 DocIntel. All rights reserved. Proprietary & Confidential Technical Documentation.</p>
+            <p style="margin-top: 10px; font-size: 12px; opacity: 0.6;">Designed for Technical Stakeholders and Enterprise Partners.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

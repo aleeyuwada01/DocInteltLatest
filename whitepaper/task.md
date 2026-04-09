@@ -1,0 +1,6 @@
+- `[ ]` Setup whitepaper directory and assets
+- `[ ]` Implement `whitepaper/style.css` with premium typography and layout
+- `[ ]` Implement `whitepaper/index.html` with full whitepaper content
+- `[ ]` Integrate hero image and pipeline visuals
+- `[ ]` Move tech stack to Appendix (hidden by default)
+- `[ ]` Final polish and verification
