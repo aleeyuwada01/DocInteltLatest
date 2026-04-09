@@ -246,7 +246,7 @@ export function LandingPage({ onGetStarted, onSignIn }: { onGetStarted: () => vo
           <Stat value="10x" label="Faster document search" />
           <Stat value="99.9%" label="Parsing accuracy" />
           <Stat value="1536-D" label="Vector search index" />
-          <Stat value="< 2s" label="Average response time" />
+          <Stat value="< 5s" label="Average response time" />
         </div>
       </section>
 

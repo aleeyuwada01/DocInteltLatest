@@ -2,7 +2,7 @@
 
 **Title:** DocIntel: AI-Powered Document Intelligence Workspace  
 **Status:** V1.0 (Production Ready)  
-**Authors:** DeepMind Team & Antigravity AI  
+**Authors:** Abdulrahim Ibrahim & Aliyu Wada  
 
 ---
 
