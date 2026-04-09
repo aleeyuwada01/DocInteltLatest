@@ -7,6 +7,7 @@ import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { DocIntelLogo } from './LandingPage';
 import { supabase } from '../lib/supabaseClient';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export function Sidebar({
   currentView, setCurrentView, storage, onUpload, onFolderUpload,
@@ -107,13 +108,22 @@ export function Sidebar({
 
           {/* New button */}
           <div className="relative mb-4" ref={newMenuRef}>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setIsNewOpen(v => !v)}
-              className="flex items-center gap-3 px-5 py-3 bg-white dark:bg-[#282a2c] rounded-2xl shadow-sm hover:shadow-md dark:shadow-none border border-gray-200/50 dark:border-gray-700/50 hover:bg-[#f8fafd] dark:hover:bg-[#37393b] transition-all duration-200 w-fit group"
+              className="w-full flex items-center justify-between px-5 py-3.5 bg-white/60 dark:bg-[#1e1f20]/60 backdrop-blur-xl border border-gray-200/60 dark:border-gray-700/50 hover:bg-white dark:hover:bg-[#282a2c] hover:shadow-md rounded-2xl text-[14px] font-bold text-gray-900 dark:text-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all duration-300 group overflow-hidden"
             >
-              <Plus className="w-5 h-5 text-[#444746] dark:text-gray-200 group-hover:text-[#0b57d0] transition-colors" />
-              <span className="text-sm font-semibold text-[#444746] dark:text-gray-200">New</span>
-            </button>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="flex items-center justify-center -ml-1">
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500 transition-colors duration-300">
+                    <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:text-white group-hover:rotate-90 transition-all duration-300" />
+                  </div>
+                </div>
+                New Document
+              </div>
+            </motion.button>
 
             {isNewOpen && (
               <div className="absolute top-[calc(100%+6px)] left-0 w-56 bg-white dark:bg-[#1e1f20] border border-gray-200/60 dark:border-gray-700/50 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-slide-up">
@@ -323,19 +333,31 @@ export function Sidebar({
 
 function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
   return (
-    <button
+    <motion.button
+      whileHover={{ x: 2, scale: 0.99 }}
+      whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+      className={`relative w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 overflow-hidden group ${
         active
-          ? 'nav-active'
-          : 'text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] hover:text-[#1a1a2e] dark:hover:text-white'
+          ? 'text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10'
+          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'
       }`}
     >
-      <span className="flex items-center gap-3">
-        {icon}
-        {label}
-      </span>
-      {active && <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
-    </button>
+      {active && (
+        <motion.div
+          layoutId="sidebar-active-indicator"
+          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-r-md"
+          initial={false}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+      )}
+      <div className="flex items-center gap-3 relative z-10 w-full">
+        <div className={`transition-colors duration-200 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}>
+          {icon}
+        </div>
+        <span className="font-semibold tracking-tight">{label}</span>
+      </div>
+      {active && <ChevronRight className="w-3.5 h-3.5 opacity-40 shrink-0 relative z-10" />}
+    </motion.button>
   );
 }
