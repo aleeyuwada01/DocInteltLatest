@@ -338,6 +338,11 @@ export default function App() {
         // Upload via tus
         const storagePath = await uploadFileWithTus(current);
 
+        // Add a delay to ensure Supabase fully commits the multipart resumable 
+        // upload before the webhook attempts to download the file.
+        // Without this, .docx (ZIP archives) may be downloaded incomplete and fail LlamaParse.
+        await new Promise(r => setTimeout(r, 1500));
+
         // Mark processing
         setUploadQueue(prev => prev.map(u =>
           u.id === itemId ? { ...u, status: 'processing' as const, progress: 100 } : u
