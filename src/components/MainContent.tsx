@@ -469,6 +469,9 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
     </>
   ) : (
     <>
+      <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:chat-file', { detail: file })); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
+        <Sparkles className="w-4 h-4 text-purple-500" /> Ask DocIntel AI
+      </button>
       <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onToggleStar?.(file.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
         <Star className={`w-4 h-4 ${file.starred_at ? 'fill-amber-400 text-amber-400' : 'text-gray-400'}`} /> {file.starred_at ? 'Remove Marker' : 'Mark Critical'}
       </button>

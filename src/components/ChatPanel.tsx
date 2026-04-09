@@ -35,6 +35,7 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
   const [activeTab, setActiveTab] = useState<'chats' | 'searches'>('chats');
   
   // Chat state
+  const [activeFile, setActiveFile] = useState<any>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -50,6 +51,24 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // ── Global Event Listener ──────────────────────────────────────────────────
+  useEffect(() => {
+    const handleChatFile = (e: any) => {
+      const file = e.detail;
+      if (file) {
+        setActiveFile(file);
+        setIsOpen(true);
+        // We can optionally clear the session or just let the user continue talking 
+        // to the document in current session. Let's create a fresh context typically.
+        setActiveSessionId(null);
+        setMessages([]);
+        setInput(`What are the key points in this document?`);
+      }
+    };
+    window.addEventListener('docintel:chat-file', handleChatFile);
+    return () => window.removeEventListener('docintel:chat-file', handleChatFile);
+  }, []);
 
   // ── Load sessions on mount ────────────────────────────────────────────────
   useEffect(() => {
@@ -192,132 +211,142 @@ export function ChatPanel({ token, user, onPreviewFile }: { token: string; user:
 
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
       
-      // 1. Embed query via backend
-      let queryEmbedding: number[] = [];
       let sourceFiles: any[] = [];
-      let context = '';
+      let systemPrompt = '';
 
-      try {
-        const embedRes = await fetch('/api/embed', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ text: query }),
-        });
-        if (embedRes.ok) {
-          const embedData = await embedRes.json();
-          queryEmbedding = embedData.embedding || [];
+      if (activeFile) {
+        // --- DOC CHAT MODE ---
+        let docContent = '';
+        try {
+          const { data } = await supabase.from('files').select('parsed_markdown, parsed_text, ai_description, original_name').eq('id', activeFile.id).single();
+          docContent = data?.parsed_markdown || data?.parsed_text || data?.ai_description || '(No content extracted)';
+        } catch (e) {
+          console.error('Failed to fetch doc content', e);
         }
-      } catch (e) {
-        console.error('Error embedding query:', e);
-      }
-      
-      // 2. Search vector DB
-      if (queryEmbedding.length > 0) {
-        const searchRes = await fetch('/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ embedding: queryEmbedding, topK: 10 }),
-        });
         
-        if (searchRes.ok) {
-          const searchData = await searchRes.json();
-          const results = searchData.results || [];
-          
-          // Deduplicate by file_id and keep highest score per file
-          const fileMap = new Map<string, any>();
-          for (const r of results) {
-            const fid = r.fileId || r.file_id;
-            if (!fid) continue;
-            const existing = fileMap.get(fid);
-            if (!existing || (r.score || 0) > (existing.score || 0)) {
-              fileMap.set(fid, { id: fid, name: r.fileName || r.original_name, score: r.score || 0, text: r.text });
-            }
+        systemPrompt = `You are DocIntel AI Doc Mode. The user is asking you questions SPECIFICALLY about this attached document.
+Filename: ${activeFile.originalName || activeFile.original_name}
+
+DOCUMENT CONTENT:
+---
+${docContent}
+---
+
+INSTRUCTIONS:
+1. Answer the user's questions relying solely on the provided document content.
+2. If the user asks for calculations, summaries, or specific records (like finding debtors or tracking costs), perform the calculations and extract the data precisely.
+3. Use MARKDOWN TABLES natively to format your response beautifully when extracting tabular data.
+4. Keep the conversation contextual. The user may ask follow-up questions.`;
+
+        sourceFiles = [{ id: activeFile.id, name: activeFile.originalName || activeFile.original_name, score: 1 }];
+      } else {
+        // --- GLOBAL SEARCH MODE ---
+        let queryEmbedding: number[] = [];
+        let context = '';
+
+        try {
+          const embedRes = await fetch('/api/embed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ text: query }),
+          });
+          if (embedRes.ok) {
+            const embedData = await embedRes.json();
+            queryEmbedding = embedData.embedding || [];
           }
+        } catch (e) { console.error('Error embedding query:', e); }
+        
+        if (queryEmbedding.length > 0) {
+          const searchRes = await fetch('/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ embedding: queryEmbedding, topK: 10 }),
+          });
           
-          // Sort by score and filter out low-relevance results
-          sourceFiles = Array.from(fileMap.values())
-            .sort((a, b) => b.score - a.score)
-            .filter(f => f.score > 0.15);
-          
-          // Fetch AI descriptions for all matched source files to enrich context
-          if (sourceFiles.length > 0) {
-            const fileIds = sourceFiles.map((f: any) => f.id);
-            const { data: fileDetails } = await supabase
-              .from('files')
-              .select('id, original_name, ai_description, mime_type')
-              .in('id', fileIds);
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const results = searchData.results || [];
             
-            if (fileDetails) {
-              const detailMap = new Map(fileDetails.map((f: any) => [f.id, f]));
-              // Build rich context with AI descriptions
-              context = sourceFiles.map((src: any) => {
-                const detail = detailMap.get(src.id);
-                const aiDesc = detail?.ai_description || '';
-                const mimeType = detail?.mime_type || '';
-                const fileName = detail?.original_name || src.name;
-                const fileType = mimeType.startsWith('image/') ? 'Image' : mimeType === 'application/pdf' ? 'PDF Document' : 'Document';
-                
-                let entry = `[File: ${fileName}] (${fileType})`;
-                if (aiDesc) {
-                  entry += `\nAI Analysis: ${aiDesc}`;
-                }
-                if (src.text && src.text !== aiDesc) {
-                  entry += `\nExtracted Content: ${src.text}`;
-                }
-                return entry;
-              }).join('\n\n---\n\n');
+            const fileMap = new Map<string, any>();
+            for (const r of results) {
+              const fid = r.fileId || r.file_id;
+              if (!fid) continue;
+              const existing = fileMap.get(fid);
+              if (!existing || (r.score || 0) > (existing.score || 0)) {
+                fileMap.set(fid, { id: fid, name: r.fileName || r.original_name, score: r.score || 0, text: r.text });
+              }
             }
-          }
-          
-          // Fallback: if no AI descriptions were fetched, use raw search text
-          if (!context) {
-            context = results
-              .filter((r: any) => (r.score || 0) > 0.15)
-              .map((r: any) => `[File: ${r.fileName || r.original_name}]\n${r.text}`)
-              .join('\n\n---\n\n');
+            
+            sourceFiles = Array.from(fileMap.values())
+              .sort((a, b) => b.score - a.score)
+              .filter(f => f.score > 0.15);
+            
+            if (sourceFiles.length > 0) {
+              const fileIds = sourceFiles.map((f: any) => f.id);
+              const { data: fileDetails } = await supabase
+                .from('files')
+                .select('id, original_name, ai_description, mime_type')
+                .in('id', fileIds);
+              
+              if (fileDetails) {
+                const detailMap = new Map(fileDetails.map((f: any) => [f.id, f]));
+                context = sourceFiles.map((src: any) => {
+                  const detail = detailMap.get(src.id);
+                  const aiDesc = detail?.ai_description || '';
+                  const mimeType = detail?.mime_type || '';
+                  const fileType = mimeType.startsWith('image/') ? 'Image' : mimeType === 'application/pdf' ? 'PDF' : 'Document';
+                  
+                  let entry = `[File: ${detail?.original_name || src.name}] (${fileType})`;
+                  if (aiDesc) entry += `\nAI Analysis: ${aiDesc}`;
+                  if (src.text && src.text !== aiDesc) entry += `\nExtracted Content: ${src.text}`;
+                  return entry;
+                }).join('\n\n---\n\n');
+              }
+            }
+            
+            if (!context) {
+              context = results.filter((r: any) => (r.score || 0) > 0.15)
+                .map((r: any) => `[File: ${r.fileName || r.original_name}]\n${r.text}`).join('\n\n---\n\n');
+            }
           }
         }
-      }
 
-      // Save search to history
-      if (queryEmbedding.length > 0) {
-        await supabase.from('search_history').insert({
-          user_id: user.id,
-          query: query,
-          results: sourceFiles,
-          result_count: sourceFiles.length,
-        });
-        loadSearchHistory();
-      }
-      
-      // 3. Send to Gemini with a document-search-aware prompt
-      const prompt = `You are DocIntel AI — an intelligent assistant that helps users find and understand files stored in their personal document drive.
-
-CRITICAL CONTEXT: The user is ALWAYS asking about their uploaded files, documents, images, or PDFs. They are NOT asking for general knowledge or real-world services. When a user says "find me a doctor", they mean "find a file or image in my drive that relates to a doctor." When they say "looking for a politician", they mean "find an image or document about a politician in my files."
-
+        if (queryEmbedding.length > 0) {
+          await supabase.from('search_history').insert({
+            user_id: user.id, query: query, results: sourceFiles, result_count: sourceFiles.length,
+          });
+          loadSearchHistory();
+        }
+        
+        systemPrompt = `You are DocIntel AI — an intelligent assistant that helps users understand files stored in their personal document drive.
+CRITICAL CONTEXT: The user is ALWAYS asking about their uploaded files. They are NOT asking for general knowledge. 
 INTELLIGENT BEHAVIOR:
-- If the user makes a typo or unclear request, interpret their most likely intent and state what you searched for. Example: "I interpreted your request as looking for files about [topic]."
-- If results seem ambiguous, ask a clarifying follow-up question.
-- Suggest what the user could do next (e.g., "Would you like me to find similar documents?" or "Try searching for [alternative term].")
-- Always be helpful and proactive, never dismissive.
-
-Your job:
-1. Search the provided file context to find which files match the user's request.
-2. When you find matching files, describe what the file contains and state its exact filename clearly.
-3. If multiple files match, list them all with brief descriptions.
-4. Be confident in your matches — if an AI analysis mentions the topic the user is looking for, that IS a match.
-5. Never say "I cannot help" if there are files in the context. Always describe what files are available and suggest which one might be what the user is looking for.
-6. Keep responses concise and focused. Use bullet points for multiple results.
+- Interpret typos or unclear requests and state what you searched for.
+- State exact filenames clearly when summarizing what you found.
+- Never say "I cannot help" if there are files in the context.
 
 Here are the files found in the user's drive:
-${context || '(No files matched the search query)'}
+${context || '(No files matched the search query)'}`;
+      }
 
-User's request: ${query}`;
-
+      // --- BUILD CHAT HISTORY ---
+      const APIContents = [];
+      APIContents.push({ role: 'user', parts: [{ text: systemPrompt }] });
+      APIContents.push({ role: 'model', parts: [{ text: activeFile ? 'Understood. I will answer based on the document.' : 'Understood. I will help the user find files.' }] });
+      
+      for (const msg of messages) {
+        if (!msg.content.trim()) continue;
+        APIContents.push({
+          role: msg.role === 'ai' ? 'model' : 'user',
+          parts: [{ text: msg.content }]
+        });
+      }
+      
+      APIContents.push({ role: 'user', parts: [{ text: query }] });
 
       const responseStream = await ai.models.generateContentStream({
         model: 'gemini-2.5-flash',
-        contents: prompt,
+        contents: APIContents,
       });
 
       setMessages(prev => [...prev, { role: 'ai', content: '' }]);
@@ -756,7 +785,20 @@ User's request: ${query}`;
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="px-4 py-3 bg-[#f8fafd]/80 dark:bg-[#121314]/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/80">
+      <div className="px-4 py-3 bg-[#f8fafd]/80 dark:bg-[#121314]/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/80 flex flex-col gap-2">
+        <AnimatePresence>
+          {activeFile && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10, height: 0 }} className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs font-medium border border-blue-100 dark:border-blue-800/50">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Chatting with: {activeFile.originalName || activeFile.original_name}</span>
+              </div>
+              <button onClick={() => setActiveFile(null)} className="p-1 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded-md ml-2 shrink-0">
+                <X className="w-3 h-3" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="relative flex items-center bg-white dark:bg-[#1e1f20] border border-gray-200 dark:border-gray-700 shadow-sm rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
           <input
             type="text"
