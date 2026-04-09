@@ -1,4 +1,4 @@
-import { Folder, FileText, Image as ImageIcon, Video, File as FileIcon, MoreVertical, Trash2, RotateCcw, Trash, ArrowLeft, LayoutGrid, List, X, Loader2, CheckCircle2, AlertCircle, Clock, Download, Star, Pencil, FolderInput, GitCompareArrows, Share2, Tag, CloudOff, FolderOpen } from 'lucide-react';
+import { Folder, FileText, Image as ImageIcon, Video, File as FileIcon, MoreVertical, Trash2, RotateCcw, Trash, ArrowLeft, LayoutGrid, List, X, Loader2, CheckCircle2, AlertCircle, Clock, Download, Star, Pencil, FolderInput, GitCompareArrows, Share2, Tag, CloudOff, FolderOpen, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useState, useEffect, useCallback } from 'react';

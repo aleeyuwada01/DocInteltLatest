@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, X, FileText, Loader2, ChevronDown, ChevronUp, Plus, MessageSquare, Trash2, Clock, Search, History } from 'lucide-react';
+import { Send, Bot, X, FileText, Loader2, ChevronDown, ChevronUp, Plus, MessageSquare, Trash2, Clock, Search, History } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { GoogleGenAI } from '@google/genai';
 import { supabase } from '../lib/supabaseClient';
@@ -669,7 +669,7 @@ ${context || '(No files matched the search query)'}`;
       >
         <div className="p-4 border-b border-gray-100 dark:border-gray-800/30 flex justify-between items-center bg-transparent">
           <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+            <Bot className="w-5 h-5 text-blue-600 dark:text-blue-500" />
             <span className="font-bold tracking-tight">DocIntel Core</span>
           </div>
           <div className="flex items-center gap-1">
@@ -690,7 +690,7 @@ ${context || '(No files matched the search query)'}`;
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center text-gray-500 mt-6 px-2">
             <div className="w-16 h-16 mx-auto mb-4 relative flex items-center justify-center">
               <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse"></div>
-              <Sparkles className="w-8 h-8 text-blue-500 relative z-10" />
+              <Bot className="w-8 h-8 text-blue-500 relative z-10" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 tracking-tight">How can I assist?</h3>
             <div className="grid grid-cols-1 gap-2.5 text-left">
