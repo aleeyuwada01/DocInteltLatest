@@ -25,7 +25,7 @@ const itemVariants = {
 
 // ─── Parsing Status Badge ────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
-  if (!status || status === 'idle') return null;
+  if (!status || status === 'idle' || status === 'completed') return null;
 
   const config: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
     parsing: {
@@ -145,7 +145,7 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
               </motion.button>
             )}
             <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 tracking-tight truncate">
-              {isTrash ? 'Trash' : currentView === 'starred' ? 'Starred Intelligence' : currentView === 'recent' ? 'Recent Activity' : currentFolderId ? 'Folder Overview' : 'DocIntel Workspace'}
+              {isTrash ? 'Trash' : currentView === 'starred' ? 'Starred' : currentView === 'recent' ? 'Recent' : currentFolderId ? 'Folder Overview' : 'Main Drive'}
             </h1>
           </div>
 
@@ -204,13 +204,13 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
 
         {folders.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4 px-1">Directory Segments</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4 px-1">Folders</h2>
             {viewMode === 'list' && (
               <div className="flex text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 pb-3 mb-2 px-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex-1">Name</div>
                 <div className="w-32 hidden sm:block">Owner</div>
                 <div className="w-32 hidden md:block">Last modified</div>
-                <div className="w-24 hidden lg:block">Architecture</div>
+                <div className="w-24 hidden lg:block">Modified</div>
                 <div className="w-8"></div>
               </div>
             )}
@@ -249,10 +249,10 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
           </div>
           {viewMode === 'list' && files.length > 0 && (
             <div className="flex text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 pb-3 mb-2 px-4 border-b border-gray-100 dark:border-gray-800">
-              <div className="flex-1">Identifier</div>
+              <div className="flex-1">Name</div>
               <div className="w-28 hidden sm:block">Status</div>
               <div className="w-32 hidden md:block">Last modified</div>
-              <div className="w-24 hidden lg:block">Payload</div>
+              <div className="w-24 hidden lg:block">Size</div>
               <div className="w-8"></div>
             </div>
           )}
@@ -321,7 +321,7 @@ function FolderCard({ folder, isTrash, refresh, onClick, viewMode, user }: any) 
   const menuItems = isTrash ? (
     <>
       <button onClick={(e) => handleAction('restore', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><RotateCcw className="w-4 h-4 text-blue-500" /> Restore</button>
-      <button onClick={(e) => handleAction('delete', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash className="w-4 h-4" /> Purge Sector</button>
+      <button onClick={(e) => handleAction('delete', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash className="w-4 h-4" /> Delete Permanently</button>
     </>
   ) : (
     <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Trash2 className="w-4 h-4 text-red-500" /> Move to trash</button>
@@ -340,7 +340,7 @@ function FolderCard({ folder, isTrash, refresh, onClick, viewMode, user }: any) 
         <div className="w-32 text-sm font-medium text-gray-400 hidden md:block truncate">{formattedDate}</div>
         <div className="w-24 text-sm font-medium text-gray-400 hidden lg:block">—</div>
         <div className="w-8 flex justify-end shrink-0">
-          <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-gray-400 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-gray-400 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 opacity-100 transition-opacity">
             <MoreVertical className="w-4 h-4" />
           </button>
         </div>
@@ -358,7 +358,7 @@ function FolderCard({ folder, isTrash, refresh, onClick, viewMode, user }: any) 
         <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 flex items-center justify-center">
           <FolderOpen className="text-indigo-600 dark:text-indigo-400 w-5 h-5" />
         </div>
-        <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-gray-400 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 opacity-0 group-hover:opacity-100 transition-all">
+        <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-gray-400 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 opacity-100 transition-all">
           <MoreVertical className="w-4 h-4" />
         </button>
       </div>
@@ -463,9 +463,9 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
 
   const menuItems = isTrash ? (
     <>
-      <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Download className="w-4 h-4" /> Payload Extract</button>
-      <button onClick={(e) => handleAction('restore', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><RotateCcw className="w-4 h-4 text-blue-500" /> Restore System</button>
-      <button onClick={(e) => handleAction('delete', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash className="w-4 h-4" /> Permanent Purge</button>
+      <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Download className="w-4 h-4" /> Download</button>
+      <button onClick={(e) => handleAction('restore', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><RotateCcw className="w-4 h-4 text-blue-500" /> Restore</button>
+      <button onClick={(e) => handleAction('delete', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash className="w-4 h-4" /> Delete Permanently</button>
     </>
   ) : (
     <>
@@ -473,26 +473,26 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
         <Sparkles className="w-4 h-4 text-purple-500" /> Ask DocIntel AI
       </button>
       <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onToggleStar?.(file.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-        <Star className={`w-4 h-4 ${file.starred_at ? 'fill-amber-400 text-amber-400' : 'text-gray-400'}`} /> {file.starred_at ? 'Remove Marker' : 'Mark Critical'}
+        <Star className={`w-4 h-4 ${file.starred_at ? 'fill-amber-400 text-amber-400' : 'text-gray-400'}`} /> {file.starred_at ? 'Unstar File' : 'Star File'}
       </button>
       <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:tags', { detail: file })); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-        <Tag className="w-4 h-4 text-teal-500" /> Annotate Network
+        <Tag className="w-4 h-4 text-teal-500" /> Manage Tags
       </button>
       <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:share', { detail: file })); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-        <Share2 className="w-4 h-4 text-indigo-500" /> Establish Link
+        <Share2 className="w-4 h-4 text-indigo-500" /> Share Link
       </button>
       <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
       <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setRenameValue(originalName); setRenaming(true); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-        <Pencil className="w-4 h-4 text-gray-400" /> Rename Alias
+        <Pencil className="w-4 h-4 text-gray-400" /> Rename File
       </button>
       <div className="relative">
         <button onClick={(e) => { e.stopPropagation(); setMoveMenuOpen(!moveMenuOpen); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-          <FolderInput className="w-4 h-4 text-gray-400" /> Reassign Node
+          <FolderInput className="w-4 h-4 text-gray-400" /> Move to Folder
         </button>
         {moveMenuOpen && (
           <div className="absolute left-full top-0 ml-2 w-56 max-h-60 overflow-y-auto bg-white dark:bg-[#1e1f20] border border-gray-100 dark:border-gray-800 rounded-xl shadow-xl z-20 py-2">
             <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setMoveMenuOpen(false); onMoveFile?.(file.id, null); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-              <HardDrive className="w-4 h-4 text-blue-500" /> Root Pipeline
+              <HardDrive className="w-4 h-4 text-blue-500" /> Root Folder
             </button>
             <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
             {(allFolders || []).map((fld: any) => (
@@ -503,9 +503,9 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
           </div>
         )}
       </div>
-      <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Download className="w-4 h-4 text-gray-400" /> Raw Extract</button>
+      <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Download className="w-4 h-4 text-gray-400" /> Download</button>
       <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-      <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /> Discard Data</button>
+      <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /> Move to Trash</button>
     </>
   );
 
@@ -525,7 +525,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
         <div className="w-32 text-sm font-medium text-gray-400 hidden md:block truncate">{formattedDate}</div>
         <div className="w-24 text-sm font-medium text-gray-400 hidden lg:block truncate">{formatBytes(file.size)}</div>
         <div className="w-8 flex justify-end shrink-0">
-          <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-gray-400 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="text-gray-400 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 opacity-100 transition-opacity">
             <MoreVertical className="w-4 h-4" />
           </button>
         </div>
@@ -538,7 +538,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
     return (
       <motion.div variants={itemVariants} className="relative flex flex-col bg-white dark:bg-[#1e1f20] border-2 border-blue-500 shadow-lg rounded-3xl p-4 z-10">
         <form onSubmit={(e) => { e.preventDefault(); onRenameFile?.(file.id, renameValue); setRenaming(false); }} className="flex flex-col gap-3">
-          <label className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Rewrite Allocation</label>
+          <label className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Rename File</label>
           <input
             autoFocus
             value={renameValue}
@@ -546,8 +546,8 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
             className="w-full bg-gray-50 dark:bg-[#151617] border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">Commit</button>
-            <button type="button" onClick={() => setRenaming(false)} className="flex-1 py-2 text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Abort</button>
+            <button type="submit" className="flex-1 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">Save</button>
+            <button type="button" onClick={() => setRenaming(false)} className="flex-1 py-2 text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
           </div>
         </form>
       </motion.div>
@@ -555,7 +555,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
   }
 
   return (
-    <motion.div variants={itemVariants} exit="exit" whileHover={{ y: -4, scale: 1.01 }} onClick={handleCardClick} className="relative flex flex-col bg-white dark:bg-[#1e1f20] border border-gray-100 dark:border-gray-800 rounded-3xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.2)] hover:shadow-xl dark:hover:shadow-black/50 cursor-pointer transition-all duration-300 group overflow-hidden">
+    <motion.div variants={itemVariants} exit="exit" whileHover={{ y: -4, scale: 1.01 }} onClick={handleCardClick} className={`relative flex flex-col bg-white dark:bg-[#1e1f20] border border-gray-100 dark:border-gray-800 rounded-3xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.2)] hover:shadow-xl dark:hover:shadow-black/50 cursor-pointer transition-all duration-300 group ${menuOpen ? 'z-50' : 'z-10'}`}>
       
       {/* File Preview Thumbnail Hub */}
       <div className="h-40 m-2 rounded-2xl bg-gray-50 dark:bg-[#131415] border border-gray-100 dark:border-[#2a2b2c] flex items-center justify-center relative overflow-hidden shrink-0 group-hover:border-blue-200 dark:group-hover:border-blue-900/50 transition-colors">
@@ -564,7 +564,7 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
           </div>
         )}
-        <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-3 right-3 z-10 opacity-100 transition-opacity">
            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }} className="p-1.5 bg-white/90 dark:bg-[#1e1f20]/90 backdrop-blur rounded-full text-gray-600 dark:text-gray-300 hover:bg-white border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
             <MoreVertical className="w-4 h-4" />
           </button>
