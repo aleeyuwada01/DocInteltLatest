@@ -21,14 +21,17 @@ export function ShareView() {
   }, [file]);
   
   useEffect(() => {
-    // Extract token from URL path: /share/:token
-    const path = window.location.pathname;
-    const token = path.split('/share/')[1];
+    // Robust extraction: find the string after '/share/' and before any slash or end of string
+    const match = window.location.pathname.match(/\/share\/([a-zA-Z0-9]+)/);
+    const token = match ? match[1] : null;
+
+    console.log('[ShareView] Detected path:', window.location.pathname);
+    console.log('[ShareView] Extracted token:', token);
     
     if (token) {
       loadSharedFile(token);
     } else {
-      setError('Invalid share link');
+      setError('Invalid share link: No token found in URL.');
       setLoading(false);
     }
   }, []);

@@ -63,8 +63,11 @@ export default function App() {
   const [hasMoreFolders, setHasMoreFolders] = useState(false);
   const [totalFileCount, setTotalFileCount] = useState(0);
 
-  // Check for public share link route
-  if (window.location.pathname.startsWith('/share/')) {
+  // ── Share Route Handling ──────────────────────────────────────────────────
+  // Check for public share link route (/share/:token)
+  // We use a regex match to be resilient against subfolders or varying path depths
+  const isShareRoute = /\/share\/[a-zA-Z0-9]+/.test(window.location.pathname);
+  if (isShareRoute) {
     return <ShareView />;
   }
 
