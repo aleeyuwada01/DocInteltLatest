@@ -6,6 +6,19 @@ export function ShareView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [file, setFile] = useState<any>(null);
+  const [publicUrl, setPublicUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (file?.storage_path) {
+      // Since the bucket is private, we need a signed URL even for the share page.
+      // We grant a 2-hour window for viewing.
+      supabase.storage.from('uploads')
+        .createSignedUrl(file.storage_path, 7200)
+        .then(({ data }) => {
+          if (data?.signedUrl) setPublicUrl(data.signedUrl);
+        });
+    }
+  }, [file]);
   
   useEffect(() => {
     // Extract token from URL path: /share/:token
@@ -71,19 +84,7 @@ export function ShareView() {
     );
   }
 
-  const [publicUrl, setPublicUrl] = useState<string>('');
 
-  useEffect(() => {
-    if (file?.storage_path) {
-      // Since the bucket is private, we need a signed URL even for the share page.
-      // We grant a 2-hour window for viewing.
-      supabase.storage.from('uploads')
-        .createSignedUrl(file.storage_path, 7200)
-        .then(({ data }) => {
-          if (data?.signedUrl) setPublicUrl(data.signedUrl);
-        });
-    }
-  }, [file]);
 
   const isImage = file?.mime_type?.startsWith('image/');
 
