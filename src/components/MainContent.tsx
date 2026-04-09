@@ -166,6 +166,7 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
                 <List className="w-4 h-4" />
               </button>
             </div>
+            {/* Summarize button disabled for now per user request
             {!isTrash && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -190,6 +191,7 @@ export function MainContent({ files, folders, onUpload, currentView, refresh, cu
                 <span className="sm:hidden">Summarize</span>
               </motion.button>
             )}
+            */}
           </div>
         </motion.div>
 
