@@ -4,14 +4,13 @@ import { FileText, Search, Sparkles, Users, Zap, Shield, ChevronRight, ArrowRigh
 /* ── Brand logo (non-triangle) ───────────────────────────────── */
 export function DocIntelLogo({ size = 24, className = '' }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={`text-blue-600 ${className}`}>
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" fill="currentColor" fillOpacity="0.15"/>
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M14 2v6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="8" y1="17" x2="16" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <line x1="8" y1="9" x2="10" y2="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
+    <div className={`relative flex items-center justify-center overflow-hidden ${className}`} style={{ width: size * 2.5, height: size * 1.2 }}>
+      <img 
+        src="https://i.ibb.co/YFF6p1mz/Screenshot-2026-04-09-213110.jpg" 
+        alt="DocIntel Logo" 
+        className="w-full h-full object-contain"
+      />
+    </div>
   );
 }
 
@@ -158,8 +157,8 @@ export function LandingPage({ onGetStarted, onSignIn }: { onGetStarted: () => vo
         <div className="max-w-5xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <DocIntelLogo size={32} />
-            <span className="text-[17px] font-bold text-gray-900 tracking-tight">DocIntel</span>
+            <DocIntelLogo size={56} />
+            {/* Companion text removed per user request */}
           </div>
 
           {/* CTAs */}
@@ -303,8 +302,8 @@ export function LandingPage({ onGetStarted, onSignIn }: { onGetStarted: () => vo
       <footer className="border-t border-gray-100 py-8 px-5">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <DocIntelLogo size={22} />
-            <span className="text-sm font-bold text-gray-700">DocIntel</span>
+            <DocIntelLogo size={40} />
+            {/* Companion text removed per user request */}
             <span className="text-xs text-gray-400">© {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center gap-5">

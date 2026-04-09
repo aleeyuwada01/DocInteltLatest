@@ -92,12 +92,10 @@ export function Sidebar({
       >
         {/* ── Logo ───────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 h-[60px] border-b border-gray-200/40 dark:border-gray-800/40 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 flex items-center justify-center shrink-0">
-              <DocIntelLogo size={24} />
+            <div className="flex items-center justify-center shrink-0">
+              <DocIntelLogo size={40} />
             </div>
-            <span className="text-[18px] font-semibold text-[#444746] dark:text-gray-100 tracking-tight">DocIntel</span>
-          </div>
+            {/* Companion text removed per user request */}
           <button className="md:hidden p-1.5 text-[#9aa0a6] rounded-xl hover:bg-[#e9eef6] dark:hover:bg-[#282a2c] transition-colors" onClick={onClose}>
             <X className="w-4 h-4" />
           </button>

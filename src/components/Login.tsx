@@ -105,8 +105,8 @@ export function Login({
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
           )}
-          <DocIntelLogo size={36} />
-          <span className="text-white text-xl font-semibold tracking-tight">DocIntel</span>
+          <DocIntelLogo size={64} />
+          {/* Companion text removed per user request */}
         </div>
 
         {/* Body */}
@@ -192,8 +192,8 @@ export function Login({
               </button>
             )}
             <div className="flex items-center gap-2">
-              <DocIntelLogo size={20} />
-              <span className="text-base font-semibold text-[#1a1a2e] dark:text-white">DocIntel</span>
+              <DocIntelLogo size={48} />
+              {/* Companion text removed per user request */}
             </div>
           </div>
 
