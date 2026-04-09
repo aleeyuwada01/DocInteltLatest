@@ -71,10 +71,21 @@ export function ShareView() {
     );
   }
 
-  const isImage = file.mime_type?.startsWith('image/');
-  const publicUrl = file.storage_path 
-    ? supabase.storage.from('uploads').getPublicUrl(file.storage_path).data.publicUrl
-    : '';
+  const [publicUrl, setPublicUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (file?.storage_path) {
+      // Since the bucket is private, we need a signed URL even for the share page.
+      // We grant a 2-hour window for viewing.
+      supabase.storage.from('uploads')
+        .createSignedUrl(file.storage_path, 7200)
+        .then(({ data }) => {
+          if (data?.signedUrl) setPublicUrl(data.signedUrl);
+        });
+    }
+  }, [file]);
+
+  const isImage = file?.mime_type?.startsWith('image/');
 
   return (
     <div className="min-h-screen bg-[#f8fafd] dark:bg-[#131314] flex flex-col items-center p-4 sm:p-8">
