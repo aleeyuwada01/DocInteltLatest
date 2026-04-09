@@ -1,9 +1,11 @@
-import { Folder, FileText, Image as ImageIcon, Video, File as FileIcon, MoreVertical, Trash2, RotateCcw, Trash, ArrowLeft, LayoutGrid, List, X, Loader2, CheckCircle2, AlertCircle, Clock, Download, Star, Pencil, FolderInput, GitCompareArrows } from 'lucide-react';
+import { Folder, FileText, Image as ImageIcon, Video, File as FileIcon, MoreVertical, Trash2, RotateCcw, Trash, ArrowLeft, LayoutGrid, List, X, Loader2, CheckCircle2, AlertCircle, Clock, Download, Star, Pencil, FolderInput, GitCompareArrows, Share2, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../lib/supabaseClient';
+import { logActivity } from '../lib/activity';
+import { TagBadges } from './TagsManager';
 
 // ─── Parsing Status Badge ────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
@@ -357,7 +359,13 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
         error = err;
       }
 
-      if (!error) { toast.success(`File ${action}ed`); refresh(); }
+      if (!error) { 
+        toast.success(`File ${action}ed`); 
+        refresh(); 
+        if (action === 'trash') logActivity(user.id, file.id, 'trash_file', { originalName });
+        if (action === 'restore') logActivity(user.id, file.id, 'restore_file', { originalName });
+        if (action === 'delete') logActivity(user.id, file.id, 'delete_file', { originalName });
+      }
       else toast.error(`Failed to ${action} file`);
     } catch {
       toast.error(`Failed to ${action} file`);
@@ -399,6 +407,12 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
           </div>
         )}
       </div>
+      <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:share', { detail: file })); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]">
+        <Share2 className="w-4 h-4" /> Share
+      </button>
+      <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:tags', { detail: file })); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]">
+        <Tag className="w-4 h-4" /> Manage Tags
+      </button>
       <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#444746] dark:text-[#c4c7c5] hover:bg-[#f0f4f9] dark:hover:bg-[#37393b]"><Download className="w-4 h-4" /> Download</button>
       <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
       <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /> Move to trash</button>
@@ -461,12 +475,13 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
           </button>
         </div>
 
-        {/* Status badge */}
-        {file.parsing_status && file.parsing_status !== 'idle' && (
-          <div className="px-2 pb-2">
+        {/* Status badge and Tags */}
+        {(file.parsing_status && file.parsing_status !== 'idle') && (
+          <div className="px-2 pb-1">
             <StatusBadge status={file.parsing_status} />
           </div>
         )}
+        <TagBadges fileId={file.id} />
 
         {menuOpen && (
           <div className="absolute top-12 right-2 w-48 bg-white dark:bg-[#282a2c] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 py-1">

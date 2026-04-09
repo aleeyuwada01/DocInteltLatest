@@ -1,7 +1,7 @@
 import {
   HardDrive, Trash2, Cloud, Plus, FolderPlus, FileUp, X,
   ChevronRight, UploadCloud, Settings, Moon, Sun, Files, FolderUp,
-  Star, Clock, GitCompareArrows
+  Star, Clock, GitCompareArrows, Activity, List, Tag
 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -184,9 +184,15 @@ export function Sidebar({
           <nav className="space-y-0.5">
             <NavItem
               icon={<HardDrive size={16} />}
-              label="My Drive"
+              label="All Documents"
               active={currentView === 'drive'}
               onClick={() => setCurrentView('drive')}
+            />
+            <NavItem
+              icon={<Activity size={16} />}
+              label="Dashboard"
+              active={currentView === 'dashboard'}
+              onClick={() => setCurrentView('dashboard')}
             />
             <NavItem
               icon={<Star size={16} />}
@@ -194,12 +200,22 @@ export function Sidebar({
               active={currentView === 'starred'}
               onClick={() => setCurrentView('starred')}
             />
+            
+            <div className="my-2" />
             <NavItem
-              icon={<Clock size={16} />}
-              label="Recent"
-              active={currentView === 'recent'}
-              onClick={() => setCurrentView('recent')}
+              icon={<List size={16} />}
+              label="Activity Log"
+              active={currentView === 'activity'}
+              onClick={() => setCurrentView('activity')}
             />
+            <NavItem
+              icon={<Tag size={16} />}
+              label="Tags"
+              active={currentView === 'tags'}
+              onClick={() => setCurrentView('tags')}
+            />
+
+            <div className="my-2 h-[1px] bg-gray-200 dark:bg-gray-800 mx-4" />
             <NavItem
               icon={<GitCompareArrows size={16} />}
               label="Compare Docs"

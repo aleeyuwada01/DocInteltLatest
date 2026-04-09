@@ -31,7 +31,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.json({ reply: response.text });
   } catch (error: any) {
-    console.error('[Chat API] Error:', error);
-    res.status(500).json({ error: 'Chat completion failed', details: error.message });
+    console.error('[Chat API] Error:', error.message || error);
+    
+    // Check if error is a rate limit or capacity issue
+    const errMsg = error.message || '';
+    if (errMsg.includes('503') || errMsg.includes('UNAVAILABLE')) {
+      return res.status(503).json({ error: 'Chat unavailable', details: 'The AI model is currently experiencing high demand. Please wait a moment and try again.' });
+    }
+    if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+      return res.status(429).json({ error: 'Rate limit exceeded', details: 'You have reached the rate limit for the AI model. Please wait a few seconds before asking another question.' });
+    }
+
+    // Default error
+    res.status(500).json({ error: 'Chat completion failed', details: 'An unexpected error occurred while communicating with the AI. Please try again.' });
   }
 }

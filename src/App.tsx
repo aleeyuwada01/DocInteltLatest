@@ -15,8 +15,14 @@ import { StorageModal } from './components/StorageModal';
 import { ParsedContentModal } from './components/ParsedContentModal';
 import { UploadProgress, type UploadItem } from './components/UploadProgress';
 import { CompareModal } from './components/CompareModal';
+import { DashboardView } from './components/DashboardView';
+import { ActivityFeed } from './components/ActivityFeed';
+import { TagsManager } from './components/TagsManager';
+import { ShareModal } from './components/ShareModal';
+import { ShareView } from './components/ShareView';
 import { Toaster, toast } from 'sonner';
 import { supabase, mapFile, mapFolder } from './lib/supabaseClient';
+import { logActivity } from './lib/activity';
 import * as tus from 'tus-js-client';
 
 export default function App() {
@@ -43,6 +49,10 @@ export default function App() {
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isTagsOpen, setIsTagsOpen] = useState(false);
+  const [activeFileForAction, setActiveFileForAction] = useState<any>(null);
+
   // Upload queue
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
   const uploadProcessing = useRef(false);
@@ -52,6 +62,31 @@ export default function App() {
   const [hasMoreFiles, setHasMoreFiles] = useState(false);
   const [hasMoreFolders, setHasMoreFolders] = useState(false);
   const [totalFileCount, setTotalFileCount] = useState(0);
+
+  // Check for public share link route
+  if (window.location.pathname.startsWith('/share/')) {
+    return <ShareView />;
+  }
+
+  // Event listeners for Share/Tags
+  useEffect(() => {
+    const handleShare = (e: any) => {
+      setActiveFileForAction(e.detail);
+      setIsShareOpen(true);
+    };
+    const handleTags = (e: any) => {
+      setActiveFileForAction(e.detail);
+      setIsTagsOpen(true);
+    };
+
+    window.addEventListener('docintel:share', handleShare);
+    window.addEventListener('docintel:tags', handleTags);
+    
+    return () => {
+      window.removeEventListener('docintel:share', handleShare);
+      window.removeEventListener('docintel:tags', handleTags);
+    }
+  }, []);
 
   // Dark mode persistence
   useEffect(() => {
@@ -171,6 +206,9 @@ export default function App() {
       if (currentView === 'trash') {
         filesQuery = filesQuery.not('trashed_at', 'is', null);
         foldersQuery = foldersQuery.not('trashed_at', 'is', null);
+      } else if (currentView === 'starred') {
+        filesQuery = filesQuery.is('trashed_at', null).not('starred_at', 'is', null);
+        foldersQuery = foldersQuery.is('trashed_at', null).not('starred_at', 'is', null);
       } else {
         filesQuery = filesQuery.is('trashed_at', null);
         foldersQuery = foldersQuery.is('trashed_at', null);
@@ -321,6 +359,15 @@ export default function App() {
         });
 
         if (!res.ok) throw new Error('Webhook failed');
+        
+        try {
+          const resData = await res.json();
+          if (resData.file?.id) {
+            logActivity(user.id, resData.file.id, 'upload_file', { originalName: current.file.name });
+          }
+        } catch (e) {
+          // ignore json parse err
+        }
 
         setUploadQueue(prev => prev.map(u =>
           u.id === itemId ? { ...u, status: 'done' as const } : u
@@ -421,6 +468,9 @@ export default function App() {
     const { error } = await supabase.from('files').update({ starred_at: isStarred ? null : new Date().toISOString() }).eq('id', fileId);
     if (!error) {
       setFiles(prev => prev.map(f => f.id === fileId ? { ...f, starred_at: isStarred ? null : new Date().toISOString() } : f));
+      logActivity(user.id, fileId, isStarred ? 'unstar_file' : 'star_file', { originalName: file.original_name || file.originalName || file.name });
+    } else {
+      toast.error(`Failed to update star: ${error.message}`);
     }
   };
 
@@ -430,6 +480,7 @@ export default function App() {
     if (!error) {
       setFiles(prev => prev.map(f => f.id === fileId ? { ...f, originalName: newName, original_name: newName, name: newName } : f));
       toast.success('File renamed');
+      logActivity(user.id, fileId, 'rename_file', { newName });
     } else {
       toast.error('Failed to rename');
     }
@@ -441,6 +492,8 @@ export default function App() {
     if (!error) {
       toast.success(folderId ? 'File moved to folder' : 'File moved to root');
       fetchDrive();
+      const targetFolderName = folderId ? folders.find(f => f.id === folderId)?.name : 'Root';
+      logActivity(user.id, fileId, 'move_file', { targetFolderName });
     } else {
       toast.error('Failed to move file');
     }
@@ -569,6 +622,14 @@ export default function App() {
               <div className="flex-1 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
               </div>
+            ) : currentView === 'dashboard' ? (
+              <DashboardView user={user} />
+            ) : currentView === 'activity' ? (
+              <ActivityFeed user={user} />
+            ) : currentView === 'tags' ? (
+              <div className="p-4 sm:p-8 flex items-start">
+                <TagsManager user={user} />
+              </div>
             ) : (
               <MainContent 
                 files={currentView === 'starred' ? files.filter((f: any) => !!f.starred_at) : currentView === 'recent' ? [...files].sort((a: any, b: any) => new Date(b.last_opened_at || 0).getTime() - new Date(a.last_opened_at || 0).getTime()).slice(0, 30) : files} 
@@ -615,6 +676,29 @@ export default function App() {
           onClose={() => setPreviewFileId(null)} 
         />
       )}
+      {isShareOpen && activeFileForAction && (
+        <ShareModal 
+          file={activeFileForAction} 
+          user={user} 
+          onClose={() => { setIsShareOpen(false); setActiveFileForAction(null); }} 
+        />
+      )}
+
+      {isTagsOpen && activeFileForAction && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setIsTagsOpen(false);
+            setActiveFileForAction(null);
+          }
+        }}>
+          <TagsManager 
+            user={user} 
+            fileId={activeFileForAction.id} 
+            onClose={() => { setIsTagsOpen(false); setActiveFileForAction(null); }} 
+          />
+        </div>
+      )}
+
       <Toaster position="top-center" theme={darkMode ? 'dark' : 'light'} />
     </div>
   );

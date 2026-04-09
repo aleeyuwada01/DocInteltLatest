@@ -102,8 +102,32 @@ Keep the total description under 500 words.`,
       return response.text || '';
     }
   } catch (err: any) {
+    // Retry on rate limit (429) or high demand (503)
+    if (err.message?.includes('429') || err.message?.includes('503') || err.message?.includes('RESOURCE_EXHAUSTED') || err.message?.includes('UNAVAILABLE')) {
+      console.warn(`[AI Description] API busy (${err.message}), waiting 10s and retrying...`);
+      await new Promise(r => setTimeout(r, 10000));
+      try {
+        const isImage = mimeType.startsWith('image/');
+        if (isImage && fileBuffer) {
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [{ inlineData: { mimeType, data: fileBuffer.toString('base64') } }, { text: `Describe this image "${fileName}" for search. Include what it shows, text/logos visible, colors, purpose. Under 300 words.` }] }],
+          });
+          return response.text || 'Could not generate description due to AI service high demand.';
+        } else {
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Summarize this document "${fileName}" for search:\n${contentText.substring(0, 4000)}\n\nInclude: topic, type, key entities, keywords. Under 300 words.`,
+          });
+          return response.text || 'Could not generate description due to AI service high demand.';
+        }
+      } catch (retryErr: any) {
+        console.error('[AI Description] Retry also failed:', retryErr.message);
+        return 'Description unavailable: AI service is currently experiencing high demand. The document content was still successfully indexed for search.';
+      }
+    }
     console.error('[AI Description] Gemini error:', err.message);
-    return '';
+    return 'Description unavailable: An error occurred during AI analysis. The document content was still successfully indexed for search.';
   }
 }
 
