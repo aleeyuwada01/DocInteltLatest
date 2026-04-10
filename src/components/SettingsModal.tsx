@@ -94,13 +94,13 @@ export function SettingsModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#1e1f20] w-full max-w-3xl max-h-[88vh] rounded-2xl shadow-2xl border border-gray-200/60 dark:border-gray-700/50 flex overflow-hidden animate-scale-in"
+        className="bg-white dark:bg-[#1e1f20] w-full max-w-3xl max-h-[95vh] md:max-h-[88vh] rounded-2xl shadow-2xl border border-gray-200/60 dark:border-gray-700/50 flex flex-col md:flex-row overflow-hidden animate-scale-in m-2 md:m-0"
         onClick={e => e.stopPropagation()}
       >
         {/* ── Left sidebar ──────────────────────────────────────── */}
-        <aside className="w-56 shrink-0 bg-[#f8fafd] dark:bg-[#131314] border-r border-gray-200/50 dark:border-gray-800/50 flex flex-col p-3">
+        <aside className="w-full md:w-56 shrink-0 bg-[#f8fafd] dark:bg-[#131314] border-b md:border-b-0 md:border-r border-gray-200/50 dark:border-gray-800/50 flex flex-col p-3">
           {/* Header */}
-          <div className="flex items-center gap-2.5 px-2 pb-5 pt-2 border-b border-gray-200/50 dark:border-gray-800/50 mb-3">
+          <div className="hidden md:flex items-center gap-2.5 px-2 pb-5 pt-2 border-b border-gray-200/50 dark:border-gray-800/50 mb-3">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0b57d0] to-[#1565c0] flex items-center justify-center shrink-0">
               <span className="text-white font-bold text-sm uppercase">{user?.username?.[0] || 'U'}</span>
             </div>
@@ -111,28 +111,28 @@ export function SettingsModal({
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 space-y-0.5">
+          <nav className="flex md:flex-col gap-1 md:space-y-0.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
             {availTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+                className={`settings-tab shrink-0 whitespace-nowrap ${activeTab === tab.id ? 'active' : ''}`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
-                {activeTab === tab.id && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
+                {activeTab === tab.id && <ChevronRight className="hidden md:block w-3.5 h-3.5 ml-auto opacity-60" />}
               </button>
             ))}
           </nav>
 
           {/* Version */}
-          <p className="text-[10px] text-[#9aa0a6] px-2 mt-4">DocIntel v1.0.0</p>
+          <p className="hidden md:block text-[10px] text-[#9aa0a6] px-2 mt-4">DocIntel v1.0.0</p>
         </aside>
 
         {/* ── Right content ─────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Top bar */}
-          <div className="flex items-center justify-between px-7 py-4 border-b border-gray-100 dark:border-gray-800/50 shrink-0">
+          <div className="flex items-center justify-between px-4 md:px-7 py-3 md:py-4 border-b border-gray-100 dark:border-gray-800/50 shrink-0">
             <h2 className="text-base font-semibold text-[#1a1a2e] dark:text-white">
               {TABS.find(t => t.id === activeTab)?.label}
             </h2>
@@ -145,7 +145,17 @@ export function SettingsModal({
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto px-7 py-6">
+          <div className="flex-1 overflow-y-auto px-4 md:px-7 py-4 md:py-6 relative pb-10">
+            <div className="md:hidden flex items-center justify-between gap-2.5 px-2 pb-5 mb-5 border-b border-gray-200/50 dark:border-gray-800/50">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0b57d0] to-[#1565c0] flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-sm uppercase">{user?.username?.[0] || 'U'}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[#1a1a2e] dark:text-white truncate">{user?.username}</p>
+                <p className="text-[10px] text-[#5f6368] dark:text-[#9aa0a6] capitalize">{user?.role || 'user'}</p>
+              </div>
+              <p className="text-[10px] text-[#9aa0a6] px-2 mt-4">DocIntel v1.0.0</p>
+            </div>
             {activeTab === 'account' && <AccountTab user={user} />}
             {activeTab === 'security' && <SecurityTab />}
             {activeTab === 'departments' && user?.role === 'admin' && (
