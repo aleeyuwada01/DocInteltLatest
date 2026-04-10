@@ -197,16 +197,16 @@ export function Sidebar({
               onClick={() => setCurrentView('drive')}
             />
             <NavItem
-              icon={<Users size={16} />}
-              label="Shared with me"
-              active={currentView === 'shared'}
-              onClick={() => setCurrentView('shared')}
-            />
-            <NavItem
               icon={<Activity size={16} />}
               label="Dashboard"
               active={currentView === 'dashboard'}
               onClick={() => setCurrentView('dashboard')}
+            />
+            <NavItem
+              icon={<Users size={16} />}
+              label="Shared with me"
+              active={currentView === 'shared'}
+              onClick={() => setCurrentView('shared')}
             />
             <NavItem
               icon={<Star size={16} />}
