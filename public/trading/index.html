@@ -3,781 +3,827 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compounding & Pyramiding Suite</title>
-    <meta name="description" content="Advanced trading simulator for micro-sprint compounding and pyramiding position strategies.">
+    <title>Extreme Risk Mathematics Simulator</title>
+    <meta name="description" content="Visualize extreme compounding, pyramiding, and reverse-engineered targets for XAUUSD with professional TradingView charts and bar replay.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
         :root {
-            --bg-base: #080c14;
-            --bg-surface: #0d1321;
-            --bg-elevated: #131b2e;
-            --bg-card: rgba(17, 25, 45, 0.7);
-            --bg-input: rgba(8, 12, 20, 0.8);
-            --text-primary: #f0f4f8;
-            --text-secondary: #8892a4;
-            --text-muted: #5a6478;
-            --border: rgba(99, 115, 145, 0.15);
-            --border-focus: rgba(99, 179, 255, 0.4);
-            --accent-blue: #4d9fff;
-            --accent-blue-glow: rgba(77, 159, 255, 0.15);
-            --accent-green: #34d399;
-            --accent-green-glow: rgba(52, 211, 153, 0.12);
-            --accent-purple: #a78bfa;
-            --accent-purple-glow: rgba(167, 139, 250, 0.12);
-            --accent-red: #f87171;
-            --accent-amber: #fbbf24;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --radius-xl: 20px;
+            --bg-base: #080c14; --bg-surface: #0d1321; --bg-elevated: #131b2e;
+            --bg-card: rgba(17,25,45,0.7); --bg-input: rgba(8,12,20,0.8);
+            --text-primary: #f0f4f8; --text-secondary: #8892a4; --text-muted: #5a6478;
+            --border: rgba(99,115,145,0.15); --border-focus: rgba(99,179,255,0.4);
+            --blue: #4d9fff; --green: #22c55e; --purple: #a78bfa;
+            --red: #ef4444; --gold: #fbbf24; --amber: #f59e0b;
+            --green-glow: rgba(34,197,94,0.12); --red-glow: rgba(239,68,68,0.08);
+            --gold-glow: rgba(251,191,36,0.1);
+            --radius: 8px; --radius-md: 12px;
         }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-base);
-            color: var(--text-primary);
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; -webkit-font-smoothing: antialiased;
         }
-
-        /* Ambient background glow */
         body::before {
-            content: '';
-            position: fixed;
-            top: -40%; left: -20%;
-            width: 60%; height: 80%;
-            background: radial-gradient(ellipse, rgba(77, 159, 255, 0.06) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
+            content:''; position:fixed; top:-40%; left:-20%; width:60%; height:80%;
+            background:radial-gradient(ellipse,rgba(77,159,255,0.05)0%,transparent 70%);
+            pointer-events:none; z-index:0;
         }
-        body::after {
-            content: '';
-            position: fixed;
-            bottom: -30%; right: -10%;
-            width: 50%; height: 70%;
-            background: radial-gradient(ellipse, rgba(167, 139, 250, 0.05) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
+        .wrap { position:relative; z-index:1; max-width:980px; margin:0 auto; padding:16px; padding-bottom:60px; }
+
+        /* Header */
+        .hdr { text-align:center; padding:24px 0 20px; }
+        .hdr .badge {
+            display:inline-flex; align-items:center; gap:6px;
+            background:rgba(77,159,255,0.1); border:1px solid rgba(77,159,255,0.2);
+            color:var(--blue); font-size:10px; font-weight:700; letter-spacing:1.2px;
+            text-transform:uppercase; padding:5px 12px; border-radius:100px; margin-bottom:12px;
+        }
+        .hdr h1 {
+            font-size:clamp(20px,5vw,30px); font-weight:800; letter-spacing:-0.5px;
+            background:linear-gradient(135deg,#f0f4f8 30%,var(--blue) 100%);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+        .hdr p { color:var(--text-secondary); font-size:13px; margin-top:6px; max-width:500px; margin-inline:auto; }
+
+        /* Tabs */
+        .tabs {
+            display:flex; background:var(--bg-surface); border-radius:var(--radius);
+            padding:3px; margin-bottom:20px; border:1px solid var(--border);
+            gap:3px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+        }
+        .tab {
+            flex:1; min-width:0; background:transparent; color:var(--text-muted); border:none;
+            padding:11px 6px; font-size:11px; font-weight:700; border-radius:6px; cursor:pointer;
+            transition:all 0.2s; text-transform:uppercase; letter-spacing:0.7px;
+            white-space:nowrap; font-family:inherit;
+        }
+        .tab:hover { color:var(--text-secondary); }
+        .tab.on { background:var(--bg-elevated); color:var(--text-primary); box-shadow:0 2px 10px rgba(0,0,0,0.25); }
+
+        /* Views */
+        .view { display:none; animation:fadeIn 0.3s ease; }
+        .view.on { display:block; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+        .stitle { font-size:16px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+        .stitle .dot { width:7px;height:7px;border-radius:50%;display:inline-block; }
+        .subtitle { font-size:12px; color:var(--gold); font-weight:600; margin-bottom:16px; }
+
+        /* Inputs */
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+        .fld { display:flex; flex-direction:column; gap:5px; }
+        .fld label { font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px; }
+        .fld input {
+            background:var(--bg-input); border:1px solid var(--border); color:var(--text-primary);
+            padding:10px 12px; border-radius:6px; font-size:14px;
+            font-family:'JetBrains Mono',monospace; font-weight:600; outline:none;
+            transition:border-color 0.2s; width:100%;
+        }
+        .fld input:focus { border-color:var(--border-focus); }
+        .fld input::placeholder { color:var(--text-muted); font-style:normal; font-weight:400; font-family:'Inter',sans-serif; font-size:11px; }
+        .btn {
+            grid-column:1/-1; padding:12px; border:none; border-radius:6px;
+            font-size:12px; font-weight:700; font-family:inherit; cursor:pointer;
+            text-transform:uppercase; letter-spacing:1.5px; color:#fff;
+            transition:all 0.2s; position:relative; overflow:hidden;
+        }
+        .btn::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.1)0%,transparent 50%); pointer-events:none; }
+        .btn.blue { background:linear-gradient(135deg,#3a8ef6,#6c5ce7); }
+        .btn.purple { background:linear-gradient(135deg,#8b5cf6,#a855f7); }
+        .btn.gold { background:linear-gradient(135deg,#f59e0b,#fbbf24); color:#0f172a; }
+        .btn:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,0,0,0.3); }
+
+        /* Stats */
+        .stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+        .sc {
+            background:var(--bg-card); backdrop-filter:blur(8px); border:1px solid var(--border);
+            padding:14px; border-radius:var(--radius); position:relative; overflow:hidden;
+        }
+        .sc::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; border-radius:var(--radius) var(--radius) 0 0; }
+        .sc.gb::before { background:linear-gradient(90deg,var(--green),transparent); }
+        .sc.bb::before { background:linear-gradient(90deg,var(--blue),transparent); }
+        .sc.pb::before { background:linear-gradient(90deg,var(--purple),transparent); }
+        .sc.rb::before { background:linear-gradient(90deg,var(--red),transparent); }
+        .sc.yb::before { background:linear-gradient(90deg,var(--gold),transparent); }
+        .sc .sl { font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:6px; }
+        .sc .sv { font-family:'JetBrains Mono',monospace; font-size:clamp(18px,3.5vw,26px); font-weight:800; line-height:1; }
+        .cg { color:var(--green); } .cr { color:var(--red); } .cb { color:var(--blue); }
+        .cp { color:var(--purple); } .cy { color:var(--gold); } .cm { color:var(--text-secondary); }
+
+        /* Chart toolbar */
+        .toolbar {
+            display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;
+        }
+        .pill {
+            display:inline-flex; background:var(--bg-surface); border:1px solid var(--border);
+            border-radius:100px; overflow:hidden;
+        }
+        .pill button {
+            background:transparent; border:none; color:var(--text-muted); padding:6px 12px;
+            font-size:10px; font-weight:700; cursor:pointer; font-family:inherit;
+            text-transform:uppercase; letter-spacing:0.5px; transition:all 0.15s;
+        }
+        .pill button.on { background:var(--bg-elevated); color:var(--text-primary); }
+        .chk-wrap {
+            display:flex; align-items:center; gap:6px; margin-left:auto;
+            font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;
+        }
+        .chk-wrap input[type=checkbox] { accent-color:var(--blue); width:14px; height:14px; }
+
+        /* Chart container */
+        .chart-box {
+            background:var(--bg-surface); border:1px solid var(--border);
+            border-radius:var(--radius-md); overflow:hidden; height:400px; position:relative;
         }
 
-        .page-wrapper {
-            position: relative;
-            z-index: 1;
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 16px;
-            padding-bottom: 60px;
+        /* Replay controls */
+        .replay {
+            display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap;
         }
+        .rbtn {
+            background:var(--bg-surface); border:1px solid var(--border); color:var(--text-secondary);
+            width:36px; height:36px; border-radius:6px; cursor:pointer; font-size:14px;
+            display:flex; align-items:center; justify-content:center; transition:all 0.15s; font-family:inherit;
+        }
+        .rbtn:hover { background:var(--bg-elevated); color:var(--text-primary); }
+        .rbtn.playing { background:var(--green); color:#fff; border-color:var(--green); }
+        .speed-pills { display:flex; margin-left:auto; }
+        .speed-pills button {
+            background:var(--bg-surface); border:1px solid var(--border); color:var(--text-muted);
+            padding:6px 10px; font-size:10px; font-weight:700; cursor:pointer; font-family:'JetBrains Mono',monospace;
+            transition:all 0.15s;
+        }
+        .speed-pills button:first-child { border-radius:6px 0 0 6px; }
+        .speed-pills button:last-child { border-radius:0 6px 6px 0; }
+        .speed-pills button.on { background:var(--bg-elevated); color:var(--text-primary); border-color:var(--border-focus); }
 
-        /* ─── Header ─── */
-        .page-header {
-            text-align: center;
-            padding: 32px 0 24px;
+        /* Banner */
+        .msg {
+            padding:12px 14px; border-radius:6px; margin-top:12px;
+            font-size:12px; font-weight:600; text-align:center; line-height:1.4; display:none;
         }
-        .page-header .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--accent-blue-glow);
-            border: 1px solid rgba(77, 159, 255, 0.2);
-            color: var(--accent-blue);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
-            padding: 6px 14px;
-            border-radius: 100px;
-            margin-bottom: 16px;
-        }
-        .page-header h1 {
-            font-size: clamp(22px, 5vw, 32px);
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #f0f4f8 30%, var(--accent-blue) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-        }
-        .page-header p {
-            color: var(--text-secondary);
-            font-size: 14px;
-            margin-top: 8px;
-            max-width: 480px;
-            margin-inline: auto;
-            line-height: 1.5;
-        }
+        .msg.ok { background:var(--green-glow); border:1px solid rgba(34,197,94,0.25); color:var(--green); display:block; }
+        .msg.bad { background:var(--red-glow); border:1px solid rgba(239,68,68,0.2); color:var(--red); display:block; }
+        .msg.info { background:var(--gold-glow); border:1px solid rgba(251,191,36,0.2); color:var(--gold); display:block; }
 
-        /* ─── Tab Navigation ─── */
-        .tab-nav {
-            display: flex;
-            background: var(--bg-surface);
-            border-radius: var(--radius-md);
-            padding: 4px;
-            margin-bottom: 24px;
-            border: 1px solid var(--border);
-            gap: 4px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+        /* Guide */
+        .guide { line-height:1.7; color:var(--text-secondary); font-size:13px; }
+        .guide h3 { color:var(--text-primary); font-size:15px; margin-top:24px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+        .guide h3.gld { color:var(--gold); }
+        .guide h3.prp { color:var(--purple); }
+        .guide h4 { color:var(--blue); margin-top:16px; margin-bottom:4px; font-size:13px; }
+        .guide ul { padding-left:16px; } .guide li { margin-bottom:6px; }
+        .guide strong { color:var(--text-primary); } .guide em { color:var(--text-muted); }
+        .callout {
+            background:var(--bg-surface); border-left:3px solid var(--green);
+            padding:16px; border-radius:0 var(--radius) var(--radius) 0; margin-top:20px;
         }
-        .tab-btn {
-            flex: 1;
-            min-width: 0;
-            background: transparent;
-            color: var(--text-muted);
-            border: none;
-            padding: 12px 8px;
-            font-size: 12px;
-            font-weight: 700;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all 0.25s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            white-space: nowrap;
-            font-family: inherit;
-        }
-        .tab-btn:hover { color: var(--text-secondary); }
-        .tab-btn.active {
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-            box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-        }
-        .tab-btn.active.blue { border-bottom: 2px solid var(--accent-blue); }
-        .tab-btn.active.purple { border-bottom: 2px solid var(--accent-purple); }
-        .tab-btn.active.green { border-bottom: 2px solid var(--accent-green); }
+        .callout h3 { margin-top:0; border:none; padding:0; color:var(--green); font-size:14px; }
+        .callout h4 { color:var(--amber); margin-top:14px; }
 
-        /* ─── View Sections ─── */
-        .view { display: none; animation: viewIn 0.35s ease; }
-        .view.active { display: block; }
-        @keyframes viewIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .footer { text-align:center; padding-top:28px; color:var(--text-muted); font-size:10px; }
+        .footer a { color:var(--blue); text-decoration:none; }
 
-        .section-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        @media(min-width:640px) {
+            .wrap { padding:24px; }
+            .grid { grid-template-columns:repeat(3,1fr); }
+            .stats { grid-template-columns:repeat(4,1fr); }
+            .chart-box { height:420px; }
+            .tab { font-size:12px; padding:12px 10px; }
         }
-        .section-title .dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .section-title .dot.blue { background: var(--accent-blue); box-shadow: 0 0 8px var(--accent-blue); }
-        .section-title .dot.purple { background: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple); }
-
-        /* ─── Input Controls ─── */
-        .controls-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .field { display: flex; flex-direction: column; gap: 6px; }
-        .field label {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .field input {
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            padding: 12px 14px;
-            border-radius: var(--radius-sm);
-            font-size: 15px;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            width: 100%;
-        }
-        .field input:focus {
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px rgba(77, 159, 255, 0.08);
-        }
-        .field input::placeholder { color: var(--text-muted); font-style: normal; font-weight: 400; font-family: 'Inter', sans-serif; font-size: 12px; }
-
-        .btn-run {
-            grid-column: 1 / -1;
-            padding: 14px;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            transition: all 0.2s ease;
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-run::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-            pointer-events: none;
-        }
-        .btn-run.blue { background: linear-gradient(135deg, #3a8ef6, #6c5ce7); }
-        .btn-run.purple { background: linear-gradient(135deg, #8b5cf6, #a855f7); }
-        .btn-run:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
-        .btn-run:active { transform: translateY(0); }
-
-        /* ─── Stat Cards ─── */
-        .stats-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            padding: 16px;
-            border-radius: var(--radius-md);
-            position: relative;
-            overflow: hidden;
-        }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            border-radius: var(--radius-md) var(--radius-md) 0 0;
-        }
-        .stat-card.glow-blue::before { background: linear-gradient(90deg, var(--accent-blue), transparent); }
-        .stat-card.glow-green::before { background: linear-gradient(90deg, var(--accent-green), transparent); }
-        .stat-card.glow-purple::before { background: linear-gradient(90deg, var(--accent-purple), transparent); }
-        .stat-card.glow-red::before { background: linear-gradient(90deg, var(--accent-red), transparent); }
-        .stat-card .stat-label {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 8px;
-        }
-        .stat-card .stat-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: clamp(20px, 4vw, 28px);
-            font-weight: 800;
-            line-height: 1;
-        }
-        .c-green { color: var(--accent-green); }
-        .c-red { color: var(--accent-red); }
-        .c-blue { color: var(--accent-blue); }
-        .c-purple { color: var(--accent-purple); }
-        .c-muted { color: var(--text-secondary); }
-
-        /* ─── Message Banner ─── */
-        .msg-banner {
-            padding: 14px 16px;
-            border-radius: var(--radius-sm);
-            margin-bottom: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            display: none;
-            text-align: center;
-            line-height: 1.4;
-        }
-        .msg-banner.success { background: var(--accent-green-glow); border: 1px solid rgba(52,211,153,0.25); color: var(--accent-green); display: block; }
-        .msg-banner.danger { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: var(--accent-red); display: block; }
-
-        /* ─── Chart ─── */
-        .chart-wrap {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 12px;
-            position: relative;
-            height: 320px;
-        }
-
-        /* ─── Guide View ─── */
-        .guide { line-height: 1.7; color: var(--text-secondary); font-size: 14px; }
-        .guide h3 {
-            color: var(--text-primary);
-            font-size: 16px;
-            margin-top: 28px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border);
-        }
-        .guide h3.purple { color: var(--accent-purple); }
-        .guide h4 { color: var(--accent-blue); margin-top: 20px; margin-bottom: 6px; font-size: 14px; }
-        .guide ul { padding-left: 18px; }
-        .guide li { margin-bottom: 8px; }
-        .guide strong { color: var(--text-primary); }
-        .guide em { color: var(--text-muted); }
-
-        .callout-box {
-            background: var(--bg-surface);
-            border-left: 3px solid var(--accent-green);
-            padding: 20px;
-            border-radius: 0 var(--radius-md) var(--radius-md) 0;
-            margin-top: 24px;
-        }
-        .callout-box h3 {
-            margin-top: 0;
-            border: none;
-            padding-bottom: 0;
-            color: var(--accent-green);
-            font-size: 15px;
-        }
-        .callout-box h4 {
-            margin-top: 16px;
-            color: var(--accent-amber);
-        }
-
-        /* ─── Footer ─── */
-        .page-footer {
-            text-align: center;
-            padding-top: 32px;
-            color: var(--text-muted);
-            font-size: 11px;
-            letter-spacing: 0.5px;
-        }
-        .page-footer a { color: var(--accent-blue); text-decoration: none; }
-
-        /* ─── Desktop Breakpoints ─── */
-        @media (min-width: 640px) {
-            .page-wrapper { padding: 24px; }
-            .controls-grid { grid-template-columns: repeat(3, 1fr); }
-            .stats-row { grid-template-columns: repeat(4, 1fr); }
-            .chart-wrap { height: 380px; padding: 16px; }
-            .tab-btn { font-size: 13px; padding: 14px 12px; }
-        }
-        @media (min-width: 768px) {
-            .page-wrapper { padding: 32px; }
-            .page-header { padding: 48px 0 32px; }
-            .chart-wrap { height: 420px; }
-        }
+        @media(min-width:768px) { .wrap { padding:32px; } }
     </style>
 </head>
 <body>
-
-<div class="page-wrapper">
-
-    <header class="page-header">
-        <div class="badge">⚡ Simulation Engine</div>
+<div class="wrap">
+    <header class="hdr">
+        <div class="badge">⚡ Extreme Risk Simulator v2.0</div>
         <h1>Compounding & Pyramiding Suite</h1>
-        <p>Visualize extreme risk-reward scenarios with Monte Carlo sprint runs and parabolic position stacking.</p>
+        <p>Visualize the Probability of Ruin — bar by bar, candle by candle.</p>
     </header>
 
-    <nav class="tab-nav">
-        <button class="tab-btn active blue" onclick="switchTab('sprint')">Micro-Sprint</button>
-        <button class="tab-btn" onclick="switchTab('pyramid')">Pyramiding</button>
-        <button class="tab-btn" onclick="switchTab('guide')">Field Guide</button>
+    <nav class="tabs">
+        <button class="tab on" onclick="go('sprint')">Micro-Sprint</button>
+        <button class="tab" onclick="go('pyramid')">Pyramiding</button>
+        <button class="tab" onclick="go('matrix')">Target Matrix</button>
+        <button class="tab" onclick="go('guide')">Field Guide</button>
     </nav>
 
-    <!-- ════════════════ SPRINT VIEW ════════════════ -->
-    <section id="sprint-view" class="view active">
-        <h2 class="section-title"><span class="dot blue"></span>Micro-Sprint Compounding</h2>
-
-        <div class="controls-grid">
-            <div class="field">
-                <label>Starting Balance ($)</label>
-                <input type="number" id="s-startBal" value="100" oninput="runSprint()">
-            </div>
-            <div class="field">
-                <label>Trade Window</label>
-                <input type="number" id="s-trades" value="10" oninput="runSprint()">
-            </div>
-            <div class="field">
-                <label>Win Rate (%)</label>
-                <input type="number" id="s-winRate" value="65" oninput="runSprint()">
-            </div>
-            <div class="field">
-                <label>R:R Ratio</label>
-                <input type="number" id="s-rrRatio" value="2.0" step="0.1" oninput="runSprint()">
-            </div>
-            <div class="field">
-                <label>Risk / Trade (%)</label>
-                <input type="number" id="s-riskPct" value="15" oninput="runSprint()">
-            </div>
-            <button class="btn-run blue" onclick="runSprint()">↻ Re-Roll Sequence</button>
+    <!-- ═══════ SPRINT ═══════ -->
+    <section id="v-sprint" class="view on">
+        <div class="stitle"><span class="dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></span>Micro-Sprint Compounding</div>
+        <div class="subtitle">Sequential trade-by-trade compounding</div>
+        <div class="grid">
+            <div class="fld"><label>Starting Balance ($)</label><input type="number" id="s-bal" value="100"></div>
+            <div class="fld"><label>Trade Window</label><input type="number" id="s-trades" value="10"></div>
+            <div class="fld"><label>Win Rate (%)</label><input type="number" id="s-wr" value="65"></div>
+            <div class="fld"><label>R:R Ratio</label><input type="number" id="s-rr" value="2.0" step="0.1"></div>
+            <div class="fld"><label>Risk / Trade (%)</label><input type="number" id="s-risk" value="15"></div>
+            <button class="btn blue" onclick="runEngine('sprint')">↻ Run Simulation</button>
         </div>
-
-        <div class="stats-row">
-            <div class="stat-card glow-green">
-                <div class="stat-label">Final Balance</div>
-                <div id="stat-s-final" class="stat-value">$0</div>
-            </div>
-            <div class="stat-card glow-blue">
-                <div class="stat-label">Peak Balance</div>
-                <div id="stat-s-peak" class="stat-value c-blue">$0</div>
-            </div>
-            <div class="stat-card glow-red">
-                <div class="stat-label">Max Drawdown</div>
-                <div id="stat-s-dd" class="stat-value c-red">0%</div>
-            </div>
-            <div class="stat-card glow-purple">
-                <div class="stat-label">Max Loss Streak</div>
-                <div id="stat-s-streak" class="stat-value c-purple">0</div>
+        <div class="stats">
+            <div class="sc gb"><div class="sl">Final Balance</div><div id="ss-final" class="sv">—</div></div>
+            <div class="sc bb"><div class="sl">Peak Balance</div><div id="ss-peak" class="sv cb">—</div></div>
+            <div class="sc rb"><div class="sl">Max Drawdown</div><div id="ss-dd" class="sv cr">—</div></div>
+            <div class="sc pb"><div class="sl">Max Loss Streak</div><div id="ss-streak" class="sv cp">—</div></div>
+        </div>
+        <div class="toolbar">
+            <div class="pill"><button class="on" onclick="setChartType('sprint','line',this)">Line</button><button onclick="setChartType('sprint','candle',this)">Candle</button></div>
+            <div class="chk-wrap"><input type="checkbox" id="ann-sprint" checked onchange="toggleAnn('sprint')"><label for="ann-sprint">Annotations</label></div>
+        </div>
+        <div id="ch-sprint" class="chart-box"></div>
+        <div class="replay">
+            <button class="rbtn" onclick="replayStep('sprint',-1)" title="Reset">⏮</button>
+            <button class="rbtn" id="play-sprint" onclick="replayToggle('sprint')" title="Play/Pause">▶</button>
+            <button class="rbtn" onclick="replayStep('sprint',1)" title="Step">⏭</button>
+            <div class="speed-pills">
+                <button class="on" onclick="setSpeed('sprint',1,this)">1x</button>
+                <button onclick="setSpeed('sprint',2,this)">2x</button>
+                <button onclick="setSpeed('sprint',5,this)">5x</button>
             </div>
         </div>
-
-        <div id="msg-sprint" class="msg-banner"></div>
-        <div class="chart-wrap"><canvas id="sprintChart"></canvas></div>
+        <div id="msg-sprint" class="msg"></div>
     </section>
 
-    <!-- ════════════════ PYRAMID VIEW ════════════════ -->
-    <section id="pyramid-view" class="view">
-        <h2 class="section-title"><span class="dot purple"></span>Pyramiding Simulator</h2>
-
-        <div class="controls-grid">
-            <div class="field">
-                <label>Initial Capital ($)</label>
-                <input type="number" id="p-cap" value="84" oninput="runPyramid(false)">
-            </div>
-            <div class="field">
-                <label>Entry Price</label>
-                <input type="number" id="p-entry" value="1000" oninput="runPyramid(false)">
-            </div>
-            <div class="field">
-                <label>Price Step</label>
-                <input type="number" id="p-step" value="10" oninput="runPyramid(false)">
-            </div>
-            <div class="field">
-                <label>Profit / Level</label>
-                <input type="number" id="p-profit" value="10" oninput="runPyramid(false)">
-            </div>
-            <div class="field">
-                <label>Stack Levels</label>
-                <input type="number" id="p-levels" placeholder="Auto (Random)" oninput="runPyramid(false)">
-            </div>
-            <button class="btn-run purple" onclick="runPyramid(true)">⚡ Simulate Market Run</button>
+    <!-- ═══════ PYRAMID ═══════ -->
+    <section id="v-pyramid" class="view">
+        <div class="stitle"><span class="dot" style="background:var(--purple);box-shadow:0 0 6px var(--purple)"></span>Pyramiding Simulator</div>
+        <div class="subtitle">Intra-trade stacking using floating profit</div>
+        <div class="grid">
+            <div class="fld"><label>Initial Capital ($)</label><input type="number" id="p-cap" value="100"></div>
+            <div class="fld"><label>Entry Price</label><input type="number" id="p-entry" value="2350" step="0.5"></div>
+            <div class="fld"><label>Price Step (Pips)</label><input type="number" id="p-step" value="10"></div>
+            <div class="fld"><label>Profit / Level</label><input type="number" id="p-profit" value="10"></div>
+            <div class="fld"><label>Stack Levels</label><input type="number" id="p-levels" placeholder="Auto (Random)"></div>
+            <button class="btn purple" onclick="runEngine('pyramid')">⚡ Simulate Market Run</button>
         </div>
-
-        <div class="stats-row">
-            <div class="stat-card glow-blue">
-                <div class="stat-label">Static (1 Lot)</div>
-                <div id="stat-p-static" class="stat-value c-muted">$0</div>
-            </div>
-            <div class="stat-card glow-green">
-                <div class="stat-label">Stacked (Parabolic)</div>
-                <div id="stat-p-stacked" class="stat-value c-green">$0</div>
-            </div>
-            <div class="stat-card glow-purple">
-                <div class="stat-label">Multiplier</div>
-                <div id="stat-p-multi" class="stat-value c-purple">0x</div>
-            </div>
-            <div class="stat-card glow-red">
-                <div class="stat-label">Active Lots</div>
-                <div id="stat-p-lots" class="stat-value">0</div>
+        <div class="stats">
+            <div class="sc bb"><div class="sl">Static (1 Lot)</div><div id="ps-static" class="sv cm">—</div></div>
+            <div class="sc gb"><div class="sl">Stacked (Parabolic)</div><div id="ps-stacked" class="sv cg">—</div></div>
+            <div class="sc pb"><div class="sl">Multiplier</div><div id="ps-multi" class="sv cp">—</div></div>
+            <div class="sc rb"><div class="sl">Active Lots</div><div id="ps-lots" class="sv">—</div></div>
+        </div>
+        <div class="toolbar">
+            <div class="pill"><button class="on" onclick="setChartType('pyramid','line',this)">Line</button><button onclick="setChartType('pyramid','candle',this)">Candle</button></div>
+            <div class="chk-wrap"><input type="checkbox" id="ann-pyramid" checked onchange="toggleAnn('pyramid')"><label for="ann-pyramid">Annotations</label></div>
+        </div>
+        <div id="ch-pyramid" class="chart-box"></div>
+        <div class="replay">
+            <button class="rbtn" onclick="replayStep('pyramid',-1)">⏮</button>
+            <button class="rbtn" id="play-pyramid" onclick="replayToggle('pyramid')">▶</button>
+            <button class="rbtn" onclick="replayStep('pyramid',1)">⏭</button>
+            <div class="speed-pills">
+                <button class="on" onclick="setSpeed('pyramid',1,this)">1x</button>
+                <button onclick="setSpeed('pyramid',2,this)">2x</button>
+                <button onclick="setSpeed('pyramid',5,this)">5x</button>
             </div>
         </div>
-
-        <div class="chart-wrap"><canvas id="pyramidChart"></canvas></div>
+        <div id="msg-pyramid" class="msg"></div>
     </section>
 
-    <!-- ════════════════ GUIDE VIEW ════════════════ -->
-    <section id="guide-view" class="view guide">
-        <h2 class="section-title"><span class="dot blue"></span>The Architect's Glossary</h2>
-        <p>To execute this level of mathematics, you must deeply understand every gear inside the engine. This is the Field Guide.</p>
+    <!-- ═══════ MATRIX ═══════ -->
+    <section id="v-matrix" class="view">
+        <div class="stitle"><span class="dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold)"></span>Target Matrix</div>
+        <div class="subtitle">XAUUSD Multi-Session Chunking — Reverse-Engineer the Impossible</div>
+        <div class="grid">
+            <div class="fld"><label>Starting Capital ($)</label><input type="number" id="m-cap" value="100"></div>
+            <div class="fld"><label>Ultimate Target ($)</label><input type="number" id="m-target" value="2000"></div>
+            <div class="fld"><label>Sessions (Chunks)</label><input type="number" id="m-sessions" value="3"></div>
+            <div class="fld"><label>Base Margin Req ($)</label><input type="number" id="m-margin" value="5"></div>
+            <div class="fld"><label>Profit per Step ($)</label><input type="number" id="m-profit" value="1"></div>
+            <button class="btn gold" onclick="runEngine('matrix')">⚡ Calculate & Simulate</button>
+        </div>
+        <div class="stats">
+            <div class="sc yb"><div class="sl">Target / Session</div><div id="ms-multi" class="sv cy">—</div></div>
+            <div class="sc pb"><div class="sl">Stack Levels / Session</div><div id="ms-levels" class="sv cp">—</div></div>
+            <div class="sc rb"><div class="sl">Fatal Pullback</div><div id="ms-pull" class="sv cr">—</div></div>
+            <div class="sc bb"><div class="sl">Max Safe Position</div><div id="ms-lots" class="sv">—</div></div>
+        </div>
+        <div class="toolbar">
+            <div class="pill"><button class="on" onclick="setChartType('matrix','line',this)">Line</button><button onclick="setChartType('matrix','candle',this)">Candle</button></div>
+            <div class="chk-wrap"><input type="checkbox" id="ann-matrix" checked onchange="toggleAnn('matrix')"><label for="ann-matrix">Annotations</label></div>
+        </div>
+        <div id="ch-matrix" class="chart-box"></div>
+        <div class="replay">
+            <button class="rbtn" onclick="replayStep('matrix',-1)">⏮</button>
+            <button class="rbtn" id="play-matrix" onclick="replayToggle('matrix')">▶</button>
+            <button class="rbtn" onclick="replayStep('matrix',1)">⏭</button>
+            <div class="speed-pills">
+                <button class="on" onclick="setSpeed('matrix',1,this)">1x</button>
+                <button onclick="setSpeed('matrix',2,this)">2x</button>
+                <button onclick="setSpeed('matrix',5,this)">5x</button>
+            </div>
+        </div>
+        <div id="msg-matrix" class="msg"></div>
+    </section>
 
-        <h3 class="purple">Part I: The Pyramiding Engine</h3>
-        <p>This simulator measures <strong>Intra-Trade Compounding</strong> — using floating profit as margin to build a massive position during a single unidirectional market move.</p>
+    <!-- ═══════ GUIDE ═══════ -->
+    <section id="v-guide" class="view guide">
+        <div class="stitle"><span class="dot" style="background:var(--green);box-shadow:0 0 6px var(--green)"></span>The Architect's Field Guide</div>
+        <p style="margin-top:8px">To execute this level of mathematics in Gold, you must deeply understand every gear inside the engine.</p>
 
-        <h4>Input Variables</h4>
+        <h3 class="gld">Engine 3: Target Matrix (Multi-Session Chunking)</h3>
+        <p>Turning $100 into $2,000 in one trade is mathematically suicidal. The Target Matrix proves that by "chunking" the target into separate sprint sessions, you drastically lower the multiplier needed.</p>
+        <h4>The Breaking Points</h4>
         <ul>
-            <li><strong>Initial Capital:</strong> The seed money risked on the very first entry. Should be an amount you are completely detached from.</li>
-            <li><strong>Entry Price:</strong> The exact market level where your "Primer Entry" is executed.</li>
-            <li><strong>Price Step:</strong> The distance the market must move in your favor before executing the next stack.</li>
-            <li><strong>Profit per Level:</strong> The raw dollar value your base lot size generates per Price Step.</li>
-            <li><strong>Stack Levels:</strong> The number of consecutive times you add a new position to the winning trade.</li>
+            <li><strong>Target Per Session:</strong> If you chunk a $2,000 target into 3 sessions, you only need a ~2.7x multiplier per session ($100→$271→$736→$2,000).</li>
+            <li><strong>Fatal Pullback at Peak:</strong> As you stack heavy positions in Gold, a pullback of even a few pips wipes out margin. The simulator shows exactly how many pips back triggers a Margin Call.</li>
+            <li><strong>Max Safe Position:</strong> The absolute limit of lots you can hold before your broker denies the trade.</li>
         </ul>
 
-        <h4>Output Metrics</h4>
+        <h3 class="prp">Engine 2: Pyramiding (Intra-Trade Stacking)</h3>
+        <p>This measures <strong>Intra-Trade Compounding</strong> — using floating profit as margin to build a massive position during a single Gold sweep.</p>
         <ul>
-            <li><strong>Static Final (1 Lot):</strong> The "Retail Baseline." Linear growth from holding the original position.</li>
-            <li><strong>Stacked Final:</strong> The "Miracle Result." Final equity from relentless pyramiding.</li>
+            <li><strong>Initial Capital:</strong> The seed money. Must be capital you are detached from.</li>
+            <li><strong>Price Step:</strong> Distance Gold must move (e.g., 10 pips = $1.00) before the next stack.</li>
             <li><strong>Miracle Multiplier:</strong> How many times more profit stacking generated vs. a standard hold.</li>
-            <li><strong>Final Lots Active:</strong> The combined weight of your position at close.</li>
         </ul>
 
-        <h3 class="purple">Part II: The Micro-Sprint Engine</h3>
-        <p>This simulator measures <strong>Sequential Compounding</strong> — rolling the total balance of each closed winner into the next trade's risk calculation.</p>
-
-        <h4>Input Variables</h4>
+        <h3 style="color:var(--blue)">Engine 1: Micro-Sprint (Sequential Compounding)</h3>
+        <p>This measures <strong>Sequential Compounding</strong> — risking a percentage of a closed winner's balance on the next setup.</p>
         <ul>
-            <li><strong>Starting Balance:</strong> The absolute maximum you can lose if Trade 1 fails.</li>
-            <li><strong>Trade Window:</strong> The maximum trades you allow before withdrawing. Your defense against the Probability of Ruin.</li>
-            <li><strong>Win Rate:</strong> Your probability of a setup hitting TP before SL.</li>
-            <li><strong>R:R Ratio:</strong> For every $1 risked, how much you demand in return.</li>
-            <li><strong>Risk per Trade:</strong> The velocity of the compound — the % of your compounded balance risked per trade.</li>
+            <li><strong>Trade Window:</strong> Your exposure limit. Run sprints, not marathons.</li>
+            <li><strong>Risk / Trade:</strong> The velocity of the compound. 15% means losing 15% of your <em>compounded</em> balance.</li>
+            <li><strong>Max Drawdown:</strong> The Psychological Pain Metric — largest peak-to-trough drop.</li>
         </ul>
 
-        <h4>Output Metrics</h4>
-        <ul>
-            <li><strong>Final Balance:</strong> What you walk away with.</li>
-            <li><strong>Peak Balance:</strong> The highest equity point before any losses.</li>
-            <li><strong>Max Drawdown:</strong> The largest peak-to-trough drop. The Psychological Pain Metric.</li>
-            <li><strong>Max Loss Streak:</strong> Highest consecutive losses encountered.</li>
-        </ul>
-
-        <div class="callout-box">
-            <h3>✦ The Golden Sweet Spots</h3>
-
-            <h4>1. Pyramiding Sweet Spot (VIX 75 / Gold M1)</h4>
-            <p>You are looking for an absolute free-fall or a parabolic squeeze.</p>
+        <div class="callout">
+            <h3>✦ The Gold (XAUUSD) Sweet Spots</h3>
+            <h4>1. Pyramiding Sweet Spot (XAUUSD M1/M5)</h4>
             <ul>
                 <li><strong>Initial Capital:</strong> Very Low ($50–$100).</li>
-                <li><strong>Price Step:</strong> Microscopic (M1/M5 timeframes).</li>
-                <li><strong>Stack Levels: 4 to 6.</strong> A 10-level stack guarantees getting caught in a pullback. 4–6 captures the meat of a momentum burst.</li>
-                <li><strong>Golden Rule:</strong> Move your SL to BE/profit on older trades the <em>exact second</em> a new stack is placed.</li>
+                <li><strong>Price Step:</strong> 10–15 pips.</li>
+                <li><strong>Stack Levels: 4–6.</strong> Stacking 10 times guarantees getting caught in a pullback.</li>
+                <li><strong>Golden Rule:</strong> Move SL to BE on older trades the <em>exact second</em> a new stack is placed.</li>
             </ul>
-
             <h4>2. Micro-Sprint Sweet Spot (High-Risk Sniper)</h4>
-            <p>Explode an account over a week — not a single day.</p>
             <ul>
                 <li><strong>Trade Window: 8–12 Trades.</strong> Past 12 invites the Law of Large Numbers.</li>
                 <li><strong>Win Rate: 60–65%.</strong></li>
-                <li><strong>R:R Ratio: 2.0+</strong> (For 1:10 Sniper setups, reduce to 3–5 trades).</li>
-                <li><strong>Risk per Trade: 15–20%.</strong> Over 25% is a coin flip. 15–20% provides violent upside while surviving a 2-trade losing streak.</li>
+                <li><strong>Risk / Trade: 15–20%.</strong> Over 25% is a coin flip.</li>
             </ul>
         </div>
     </section>
 
-    <footer class="page-footer">
-        Built for precision by <a href="/">DocIntel</a> · Simulation Engine v2.0
-    </footer>
+    <footer class="footer">Built for precision by <a href="/">DocIntel</a> · Extreme Risk Simulator v2.0</footer>
 </div>
 
 <script>
-let chartSprint = null;
-let chartPyramid = null;
+/* ══════════════════════════════════════════════════════════════════
+   GLOBALS
+   ══════════════════════════════════════════════════════════════════ */
+const E = {}; // Engine states keyed by 'sprint','pyramid','matrix'
+const BASES = { sprint:[2025,1,1], pyramid:[2025,3,1], matrix:[2025,6,1] };
+const CHART_OPTS = {
+    layout: { background:{ type:'solid', color:'#0d1321' }, textColor:'#5a6478', fontFamily:'Inter' },
+    grid: { vertLines:{ color:'rgba(99,115,145,0.08)' }, horzLines:{ color:'rgba(99,115,145,0.08)' } },
+    crosshair: { mode: 0 },
+    rightPriceScale: { borderColor:'rgba(99,115,145,0.15)' },
+    timeScale: { borderColor:'rgba(99,115,145,0.15)', timeVisible:false },
+};
 
-const CHART_FONT = { family: "'Inter', sans-serif", size: 11 };
-const GRID_COLOR = 'rgba(99, 115, 145, 0.12)';
-const TICK_COLOR = '#5a6478';
+function makeTime(base, i) {
+    const d = new Date(base[0], base[1]-1, base[2]);
+    d.setDate(d.getDate() + i);
+    return { year:d.getFullYear(), month:d.getMonth()+1, day:d.getDate() };
+}
 
-function switchTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'blue', 'purple', 'green'));
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+function ohlc(open, close, vol) {
+    const range = Math.abs(close - open) * vol + 0.5;
+    const high = Math.max(open, close) + Math.random() * range;
+    const low = Math.min(open, close) - Math.random() * range;
+    return { open:+open.toFixed(2), high:+high.toFixed(2), low:+Math.max(0.01,low).toFixed(2), close:+close.toFixed(2) };
+}
 
-    const btns = document.querySelectorAll('.tab-btn');
-    if (tab === 'sprint') {
-        btns[0].classList.add('active', 'blue');
-        document.getElementById('sprint-view').classList.add('active');
-        runSprint();
-    } else if (tab === 'pyramid') {
-        btns[1].classList.add('active', 'purple');
-        document.getElementById('pyramid-view').classList.add('active');
-        runPyramid(true);
+function fmt(n) { return n >= 1000 ? '$'+n.toLocaleString(undefined,{maximumFractionDigits:0}) : '$'+n.toFixed(n < 10 ? 2 : 0); }
+
+/* ── Tab Switching ── */
+function go(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+    const tabs = document.querySelectorAll('.tab');
+    const map = {sprint:0,pyramid:1,matrix:2,guide:3};
+    tabs[map[tab]].classList.add('on');
+    document.getElementById('v-'+tab).classList.add('on');
+    if (tab !== 'guide' && E[tab]) resizeChart(tab);
+}
+
+/* ── Chart Management ── */
+function initChart(key) {
+    const el = document.getElementById('ch-'+key);
+    el.innerHTML = '';
+    const chart = LightweightCharts.createChart(el, { ...CHART_OPTS, width: el.clientWidth, height: el.clientHeight });
+    new ResizeObserver(() => chart.resize(el.clientWidth, el.clientHeight)).observe(el);
+    return chart;
+}
+
+function resizeChart(key) {
+    if (!E[key] || !E[key].chart) return;
+    const el = document.getElementById('ch-'+key);
+    E[key].chart.resize(el.clientWidth, el.clientHeight);
+}
+
+function addSeries(chart, type, opts) {
+    if (type === 'candle') {
+        return chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor:'#22c55e', downColor:'#ef4444', borderVisible:false,
+            wickUpColor:'#22c55e', wickDownColor:'#ef4444', ...opts
+        });
+    }
+    return chart.addSeries(LightweightCharts.LineSeries, {
+        color: opts.color || '#4d9fff', lineWidth: 2,
+        topColor: opts.topColor || 'rgba(77,159,255,0.25)',
+        bottomColor: opts.bottomColor || 'rgba(77,159,255,0.0)',
+        ...opts
+    });
+}
+
+/* ── Chart Type Toggle ── */
+function setChartType(key, type, btn) {
+    const p = btn.parentElement;
+    p.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    if (!E[key]) return;
+    E[key].chartType = type;
+    rebuildChart(key);
+}
+
+function rebuildChart(key) {
+    const e = E[key];
+    if (!e || !e.allBars.length) return;
+    if (e.chart) e.chart.remove();
+    e.chart = initChart(key);
+    const barsToShow = e.allBars.slice(0, e.index);
+    if (e.chartType === 'candle') {
+        e.series = addSeries(e.chart, 'candle', {});
+        e.series.setData(barsToShow);
     } else {
-        btns[2].classList.add('active', 'green');
-        document.getElementById('guide-view').classList.add('active');
+        e.series = addSeries(e.chart, 'line', { color: e.lineColor, topColor: e.lineTop, bottomColor: e.lineBot });
+        e.series.setData(barsToShow.map(b => ({ time: b.time, value: b.close })));
+    }
+    // Secondary series (pyramid)
+    if (e.secondaryBars) {
+        e.secondary = addSeries(e.chart, 'line', { color:'#5a6478', lineWidth:1, lineStyle:2 });
+        e.secondary.setData(e.secondaryBars.slice(0, e.index).map(b => ({ time: b.time, value: b.close })));
+    }
+    applyMarkers(key);
+    e.chart.timeScale().fitContent();
+}
+
+/* ── Annotations ── */
+function toggleAnn(key) {
+    if (!E[key]) return;
+    E[key].showAnn = document.getElementById('ann-'+key).checked;
+    applyMarkers(key);
+}
+
+function applyMarkers(key) {
+    const e = E[key];
+    if (!e || !e.series) return;
+    const markers = e.showAnn ? e.allMarkers.filter(m => {
+        const t = m.time;
+        const idx = e.allBars.findIndex(b => b.time.year===t.year && b.time.month===t.month && b.time.day===t.day);
+        return idx < e.index;
+    }) : [];
+    try { LightweightCharts.createSeriesMarkers(e.series, markers); } catch(ex) {}
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   REPLAY SYSTEM
+   ══════════════════════════════════════════════════════════════════ */
+function replayToggle(key) {
+    const e = E[key];
+    if (!e) return;
+    if (e.playing) { replayPause(key); }
+    else { replayPlay(key); }
+}
+
+function replayPlay(key) {
+    const e = E[key];
+    if (!e || e.index >= e.allBars.length) return;
+    e.playing = true;
+    document.getElementById('play-'+key).classList.add('playing');
+    document.getElementById('play-'+key).textContent = '⏸';
+    e.timer = setInterval(() => tick(key), Math.round(200 / e.speed));
+}
+
+function replayPause(key) {
+    const e = E[key];
+    if (!e) return;
+    e.playing = false;
+    clearInterval(e.timer);
+    document.getElementById('play-'+key).classList.remove('playing');
+    document.getElementById('play-'+key).textContent = '▶';
+}
+
+function replayStep(key, dir) {
+    const e = E[key];
+    if (!e) return;
+    if (dir === -1) {
+        // Reset
+        replayPause(key);
+        e.index = 0;
+        rebuildChart(key);
+        updateStats(key, 0);
+        return;
+    }
+    if (e.index < e.allBars.length) tick(key);
+}
+
+function setSpeed(key, spd, btn) {
+    const pills = btn.parentElement;
+    pills.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    if (!E[key]) return;
+    E[key].speed = spd;
+    if (E[key].playing) {
+        clearInterval(E[key].timer);
+        E[key].timer = setInterval(() => tick(key), Math.round(200 / spd));
     }
 }
 
-/* ══════════════════════════════════════════════
-   MICRO-SPRINT ENGINE
-   ══════════════════════════════════════════════ */
-function runSprint() {
-    const startBal = parseFloat(document.getElementById('s-startBal').value) || 0;
-    const trades   = parseInt(document.getElementById('s-trades').value) || 0;
-    const winRate  = (parseFloat(document.getElementById('s-winRate').value) || 0) / 100;
-    const rr       = parseFloat(document.getElementById('s-rrRatio').value) || 0;
-    const riskPct  = (parseFloat(document.getElementById('s-riskPct').value) || 0) / 100;
+function tick(key) {
+    const e = E[key];
+    if (e.index >= e.allBars.length) { replayPause(key); return; }
+    const bar = e.allBars[e.index];
+    if (e.chartType === 'candle') {
+        e.series.update(bar);
+    } else {
+        e.series.update({ time: bar.time, value: bar.close });
+    }
+    if (e.secondary && e.secondaryBars && e.index < e.secondaryBars.length) {
+        const sb = e.secondaryBars[e.index];
+        e.secondary.update({ time: sb.time, value: sb.close });
+    }
+    e.index++;
+    applyMarkers(key);
+    updateStats(key, e.index - 1);
+    if (e.blowAt === e.index - 1) {
+        replayPause(key);
+    }
+    if (e.index >= e.allBars.length) { replayPause(key); }
+}
 
-    let bal = startBal, peak = startBal, maxDD = 0;
-    let streak = 0, maxStreak = 0;
-    const hist = [bal], labels = ['Start'];
+function updateStats(key, idx) {
+    const e = E[key];
+    if (!e || !e.snapshots || !e.snapshots[idx]) return;
+    const s = e.snapshots[idx];
+    Object.keys(s).forEach(k => {
+        const el = document.getElementById(k);
+        if (el) { el.textContent = s[k].text; el.className = 'sv ' + (s[k].cls || ''); }
+    });
+    // Message
+    const msgEl = document.getElementById('msg-'+key);
+    if (s._msg) { msgEl.className = 'msg ' + s._msg.cls; msgEl.textContent = s._msg.text; }
+    else { msgEl.className = 'msg'; msgEl.style.display = ''; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ENGINE RUNNER
+   ══════════════════════════════════════════════════════════════════ */
+function runEngine(key) {
+    replayPause(key);
+    const generators = { sprint: genSprint, pyramid: genPyramid, matrix: genMatrix };
+    const data = generators[key]();
+    E[key] = {
+        ...data,
+        index: 0, speed: E[key]?.speed || 1, playing: false, timer: null,
+        chartType: E[key]?.chartType || 'line',
+        showAnn: document.getElementById('ann-'+key)?.checked ?? true,
+        chart: null, series: null, secondary: null,
+    };
+    E[key].chart = initChart(key);
+    if (E[key].chartType === 'candle') {
+        E[key].series = addSeries(E[key].chart, 'candle', {});
+    } else {
+        E[key].series = addSeries(E[key].chart, 'line', { color:data.lineColor, topColor:data.lineTop, bottomColor:data.lineBot });
+    }
+    if (data.secondaryBars) {
+        E[key].secondary = addSeries(E[key].chart, 'line', { color:'#5a6478', lineWidth:1, lineStyle:2 });
+    }
+    E[key].chart.timeScale().fitContent();
+    updateStats(key, 0);
+    replayPlay(key);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ENGINE 1: MICRO-SPRINT
+   ══════════════════════════════════════════════════════════════════ */
+function genSprint() {
+    const startBal = +document.getElementById('s-bal').value || 100;
+    const trades = +document.getElementById('s-trades').value || 10;
+    const winRate = (+document.getElementById('s-wr').value || 65) / 100;
+    const rr = +document.getElementById('s-rr').value || 2;
+    const riskPct = (+document.getElementById('s-risk').value || 15) / 100;
+
+    let bal = startBal, peak = startBal, maxDD = 0, streak = 0, maxStreak = 0;
+    const bars = [], markers = [], snaps = [];
+    const base = BASES.sprint;
+
+    // Initial bar
+    const t0 = makeTime(base, 0);
+    bars.push({ time:t0, ...ohlc(bal, bal, 0.1) });
+    snaps.push(makeSprintSnap(bal, peak, 0, 0, startBal));
 
     for (let i = 1; i <= trades; i++) {
-        labels.push(`T${i}`);
+        const prev = bal;
         const risk = bal * riskPct;
-        if (Math.random() <= winRate) {
-            bal += risk * rr;
-            streak = 0;
-        } else {
-            bal -= risk;
-            streak++;
-            if (streak > maxStreak) maxStreak = streak;
-        }
-        if (bal < 0) bal = 0;
-        hist.push(bal);
+        const win = Math.random() <= winRate;
+        if (win) { bal += risk * rr; streak = 0; }
+        else { bal -= risk; streak++; maxStreak = Math.max(maxStreak, streak); }
+        bal = Math.max(0, bal);
         if (bal > peak) peak = bal;
-        else {
-            const dd = ((peak - bal) / peak) * 100;
-            if (dd > maxDD) maxDD = dd;
-        }
+        else { const dd = ((peak - bal) / peak) * 100; maxDD = Math.max(maxDD, dd); }
+
+        const t = makeTime(base, i);
+        bars.push({ time:t, ...ohlc(prev, bal, 0.3) });
+        markers.push({
+            time:t, position: win ? 'belowBar' : 'aboveBar',
+            color: win ? '#22c55e' : '#ef4444', shape: win ? 'arrowUp' : 'arrowDown',
+            text: win ? '+'+fmt(risk*rr) : '-'+fmt(risk)
+        });
+        snaps.push(makeSprintSnap(bal, peak, maxDD, maxStreak, startBal, i === trades));
         if (bal === 0) break;
     }
 
-    // Stats
-    const $f = document.getElementById('stat-s-final');
-    $f.innerText = `$${bal.toFixed(0)}`;
-    $f.className = 'stat-value ' + (bal >= startBal ? 'c-green' : 'c-red');
-    document.getElementById('stat-s-peak').innerText = `$${peak.toFixed(0)}`;
-    document.getElementById('stat-s-dd').innerText = `${maxDD.toFixed(1)}%`;
-    document.getElementById('stat-s-streak').innerText = maxStreak;
-
-    // Banner
-    const msg = document.getElementById('msg-sprint');
-    if (maxDD > 40) {
-        msg.className = 'msg-banner danger';
-        msg.innerText = `⚠ Max drawdown hit ${maxDD.toFixed(1)}%. You lost $${(peak * maxDD / 100).toFixed(0)} from peak — could you hold through that?`;
-    } else if (bal > startBal) {
-        msg.className = 'msg-banner success';
-        msg.innerText = `✅ Sprint cleared before the Law of Large Numbers triggered a collapse. +${((bal / startBal - 1) * 100).toFixed(0)}% return.`;
-    } else {
-        msg.className = 'msg-banner danger';
-        msg.innerText = `The math caught up. Account ended in drawdown at $${bal.toFixed(0)}.`;
-    }
-
-    // Chart
-    const ctx = document.getElementById('sprintChart').getContext('2d');
-    if (chartSprint) chartSprint.destroy();
-    const grad = ctx.createLinearGradient(0, 0, 0, 340);
-    grad.addColorStop(0, 'rgba(77, 159, 255, 0.25)');
-    grad.addColorStop(1, 'rgba(77, 159, 255, 0.0)');
-
-    chartSprint = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Equity Curve',
-                data: hist,
-                borderColor: '#4d9fff',
-                backgroundColor: grad,
-                borderWidth: 2.5,
-                fill: true,
-                tension: 0.35,
-                pointRadius: trades <= 15 ? 4 : 2,
-                pointBackgroundColor: '#4d9fff',
-                pointBorderColor: '#0d1321',
-                pointBorderWidth: 2,
-            }]
-        },
-        options: chartOpts()
-    });
+    return { allBars:bars, allMarkers:markers, snapshots:snaps, secondaryBars:null, blowAt:-1,
+        lineColor:'#4d9fff', lineTop:'rgba(77,159,255,0.25)', lineBot:'rgba(77,159,255,0)' };
 }
 
-/* ══════════════════════════════════════════════
-   PYRAMIDING ENGINE
-   ══════════════════════════════════════════════ */
-function runPyramid(forceRandom = false) {
-    const cap     = parseFloat(document.getElementById('p-cap').value) || 0;
-    const entry   = parseFloat(document.getElementById('p-entry').value) || 0;
-    const step    = parseFloat(document.getElementById('p-step').value) || 0;
-    const profit  = parseFloat(document.getElementById('p-profit').value) || 0;
-    const $levels = document.getElementById('p-levels');
-    let levels    = parseInt($levels.value);
-
-    if (forceRandom || isNaN(levels) || levels <= 0) {
-        levels = Math.floor(Math.random() * 8) + 2;
-        $levels.value = levels;
+function makeSprintSnap(bal, peak, dd, streak, startBal, isFinal) {
+    const snap = {
+        'ss-final': { text: fmt(bal), cls: bal >= startBal ? 'cg' : 'cr' },
+        'ss-peak': { text: fmt(peak), cls: 'cb' },
+        'ss-dd': { text: dd.toFixed(1)+'%', cls: 'cr' },
+        'ss-streak': { text: ''+streak, cls: 'cp' },
+    };
+    if (isFinal) {
+        if (dd > 40) snap._msg = { cls:'bad', text:`⚠ Max drawdown hit ${dd.toFixed(1)}%. You lost ${fmt(peak*dd/100)} from peak — could you hold through that?` };
+        else if (bal > startBal) snap._msg = { cls:'ok', text:`✅ Sprint cleared. +${((bal/startBal-1)*100).toFixed(0)}% return before the Law of Large Numbers struck.` };
+        else snap._msg = { cls:'bad', text:`The math caught up. Account ended at ${fmt(bal)}.` };
     }
+    return snap;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ENGINE 2: PYRAMIDING
+   ══════════════════════════════════════════════════════════════════ */
+function genPyramid() {
+    const cap = +document.getElementById('p-cap').value || 100;
+    const entry = +document.getElementById('p-entry').value || 2350;
+    const step = +document.getElementById('p-step').value || 10;
+    const profitPerLvl = +document.getElementById('p-profit').value || 10;
+    let levels = parseInt(document.getElementById('p-levels').value);
+    if (isNaN(levels) || levels <= 0) levels = Math.floor(Math.random() * 8) + 3;
 
     let statEq = cap, stackEq = cap, lots = 1;
-    const labels = [`$${entry}`], statD = [cap], stackD = [cap];
+    const bars = [], sBars = [], markers = [], snaps = [];
+    const base = BASES.pyramid;
+    const pipsToPrice = step / 10; // 10 pips = $1.00 for Gold
+
+    const t0 = makeTime(base, 0);
+    const p0 = entry;
+    bars.push({ time:t0, ...ohlc(cap, cap, 0.1) });
+    sBars.push({ time:t0, ...ohlc(cap, cap, 0.1) });
+    snaps.push(makePyramidSnap(statEq, stackEq, 1, cap));
 
     for (let i = 1; i <= levels; i++) {
-        labels.push(`$${entry + step * i}`);
-        statEq += profit;
-        stackEq += lots * profit;
+        const prevStack = stackEq;
+        const prevStat = statEq;
+        statEq += profitPerLvl;
+        stackEq += lots * profitPerLvl;
         lots++;
-        statD.push(statEq);
-        stackD.push(stackEq);
+        const t = makeTime(base, i);
+        bars.push({ time:t, ...ohlc(prevStack, stackEq, 0.5) });
+        sBars.push({ time:t, ...ohlc(prevStat, statEq, 0.1) });
+        markers.push({ time:t, position:'belowBar', color:'#a78bfa', shape:'arrowUp', text:'Stack #'+i });
+        snaps.push(makePyramidSnap(statEq, stackEq, lots, cap, i === levels));
     }
 
-    const multi = statEq > 0 ? (stackEq / statEq).toFixed(2) : 0;
-
-    document.getElementById('stat-p-static').innerText  = `$${statEq.toFixed(0)}`;
-    document.getElementById('stat-p-stacked').innerText = `$${stackEq.toFixed(0)}`;
-    document.getElementById('stat-p-multi').innerText   = `${multi}x`;
-    document.getElementById('stat-p-lots').innerText    = lots;
-
-    const ctx = document.getElementById('pyramidChart').getContext('2d');
-    if (chartPyramid) chartPyramid.destroy();
-    const grad = ctx.createLinearGradient(0, 0, 0, 340);
-    grad.addColorStop(0, 'rgba(167, 139, 250, 0.22)');
-    grad.addColorStop(1, 'rgba(167, 139, 250, 0.0)');
-
-    chartPyramid = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Stacked (Parabolic)',
-                    data: stackD,
-                    borderColor: '#a78bfa',
-                    backgroundColor: grad,
-                    borderWidth: 2.5,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#a78bfa',
-                    pointBorderColor: '#0d1321',
-                    pointBorderWidth: 2,
-                },
-                {
-                    label: 'Static Hold (Linear)',
-                    data: statD,
-                    borderColor: '#5a6478',
-                    borderWidth: 1.5,
-                    borderDash: [6, 4],
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                }
-            ]
-        },
-        options: chartOpts()
-    });
-
-    if (forceRandom) setTimeout(() => { $levels.value = ''; }, 1200);
+    return { allBars:bars, allMarkers:markers, snapshots:snaps, secondaryBars:sBars, blowAt:-1,
+        lineColor:'#a78bfa', lineTop:'rgba(167,139,250,0.22)', lineBot:'rgba(167,139,250,0)' };
 }
 
-function chartOpts() {
+function makePyramidSnap(statEq, stackEq, lots, cap, isFinal) {
+    const multi = statEq > 0 ? (stackEq / statEq).toFixed(2) : '0';
     return {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-            legend: {
-                labels: { color: '#8892a4', font: CHART_FONT, usePointStyle: true, pointStyleWidth: 12, padding: 16 }
-            },
-            tooltip: {
-                backgroundColor: '#131b2e',
-                borderColor: 'rgba(99,115,145,0.2)',
-                borderWidth: 1,
-                titleFont: { ...CHART_FONT, weight: '700' },
-                bodyFont: CHART_FONT,
-                padding: 12,
-                cornerRadius: 8,
-                callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}` }
-            }
-        },
-        scales: {
-            x: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: { ...CHART_FONT, size: 10 } } },
-            y: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: { ...CHART_FONT, size: 10 }, callback: v => '$' + v } }
-        }
+        'ps-static': { text: fmt(statEq), cls: 'cm' },
+        'ps-stacked': { text: fmt(stackEq), cls: 'cg' },
+        'ps-multi': { text: multi+'x', cls: 'cp' },
+        'ps-lots': { text: ''+lots, cls: '' },
     };
 }
 
-window.onload = () => runSprint();
+/* ══════════════════════════════════════════════════════════════════
+   ENGINE 3: TARGET MATRIX
+   ══════════════════════════════════════════════════════════════════ */
+function genMatrix() {
+    const cap = +document.getElementById('m-cap').value || 100;
+    const target = +document.getElementById('m-target').value || 2000;
+    const sessions = +document.getElementById('m-sessions').value || 3;
+    const marginReq = +document.getElementById('m-margin').value || 5;
+    const profitStep = +document.getElementById('m-profit').value || 1;
+
+    if (cap >= target || profitStep <= 0) {
+        return { allBars:[], allMarkers:[], snapshots:[{ 'ms-multi':{text:'—',cls:'cy'}, 'ms-levels':{text:'—',cls:'cp'}, 'ms-pull':{text:'—',cls:'cr'}, 'ms-lots':{text:'—',cls:''}, _msg:{cls:'bad',text:'Set a valid target higher than starting capital.'} }], secondaryBars:null, blowAt:-1, lineColor:'#fbbf24', lineTop:'rgba(251,191,36,0.25)', lineBot:'rgba(251,191,36,0)' };
+    }
+
+    const sessionMulti = Math.pow(target / cap, 1 / sessions);
+
+    // Pre-calc required levels for one session
+    let testEq = cap, testLots = 1, reqLevels = 0;
+    while (testEq < cap * sessionMulti && reqLevels < 150) {
+        reqLevels++; testEq += testLots * profitStep; testLots++;
+    }
+    const lossPerStep = testLots * profitStep;
+    const fatalPips = (testEq / lossPerStep) * 10;
+    const maxLots = Math.floor(testEq / marginReq);
+
+    // Generate bars across all sessions
+    const bars = [], markers = [], snaps = [];
+    const base = BASES.matrix;
+    let eq = cap, lots = 1, barIdx = 0, blowAt = -1;
+    let blown = false;
+
+    bars.push({ time:makeTime(base, barIdx), ...ohlc(eq, eq, 0.1) });
+    snaps.push(makeMatrixSnap(sessionMulti, reqLevels, fatalPips, maxLots, null));
+    barIdx++;
+
+    for (let s = 1; s <= sessions && !blown; s++) {
+        const sessionTarget = cap * Math.pow(sessionMulti, s);
+        lots = 1;
+        let level = 0;
+
+        while (eq < sessionTarget && level < 150 && !blown) {
+            level++;
+            const prevEq = eq;
+            eq += lots * profitStep;
+            lots++;
+            const t = makeTime(base, barIdx);
+            bars.push({ time:t, ...ohlc(prevEq, eq, 0.8) });
+            markers.push({ time:t, position:'belowBar', color:'#a78bfa', shape:'arrowUp', text:'S'+s+' L'+level });
+
+            // Blowout check: 7% after level 3
+            if (level > 3 && Math.random() < 0.07) {
+                blown = true;
+                blowAt = barIdx;
+                // Fatal candle
+                const fatalT = makeTime(base, barIdx + 1);
+                bars.push({ time:fatalT, open:+eq.toFixed(2), high:+(eq*1.02).toFixed(2), low:0.01, close:0.01 });
+                markers.push({ time:fatalT, position:'aboveBar', color:'#ef4444', shape:'square', text:'💥 MARGIN CALL' });
+                snaps.push(makeMatrixSnap(sessionMulti, reqLevels, fatalPips, maxLots, null));
+                snaps.push(makeMatrixSnap(sessionMulti, reqLevels, fatalPips, maxLots, { cls:'bad', text:`💥 ACCOUNT BLOWN in Session ${s}: A Gold spike wiped out your ${lots} lot position. Fatal pullback needed: only ${fatalPips.toFixed(1)} pips.` }));
+                barIdx += 2;
+                break;
+            }
+
+            snaps.push(makeMatrixSnap(sessionMulti, reqLevels, fatalPips, maxLots, null));
+            barIdx++;
+        }
+
+        if (!blown) {
+            eq = sessionTarget;
+            if (s < sessions) {
+                // Session boundary marker
+                const bt = makeTime(base, barIdx);
+                bars.push({ time:bt, ...ohlc(eq, eq, 0.1) });
+                markers.push({ time:bt, position:'aboveBar', color:'#fbbf24', shape:'circle', text:'S'+s+': '+fmt(eq) });
+                snaps.push(makeMatrixSnap(sessionMulti, reqLevels, fatalPips, maxLots, { cls:'info', text:`Session ${s} complete: ${fmt(eq)}. Starting Session ${s+1}...` }));
+                barIdx++;
+                lots = 1;
+            }
+        }
+    }
+
+    if (!blown) {
+        // Success marker on last bar
+        const lastBar = bars[bars.length - 1];
+        markers.push({ time:lastBar.time, position:'aboveBar', color:'#22c55e', shape:'circle', text:'TARGET: '+fmt(eq) });
+        snaps[snaps.length - 1] = makeMatrixSnap(sessionMulti, reqLevels, fatalPips, maxLots, { cls:'ok', text:`✅ TARGET ACHIEVED: ${fmt(eq)} across ${sessions} sessions without blowing up.` });
+    }
+
+    return { allBars:bars, allMarkers:markers, snapshots:snaps, secondaryBars:null, blowAt: blown ? blowAt + 1 : -1,
+        lineColor:'#fbbf24', lineTop:'rgba(251,191,36,0.25)', lineBot:'rgba(251,191,36,0)' };
+}
+
+function makeMatrixSnap(multi, levels, pips, lots, msg) {
+    const snap = {
+        'ms-multi': { text: multi.toFixed(2)+'x', cls: 'cy' },
+        'ms-levels': { text: ''+levels, cls: 'cp' },
+        'ms-pull': { text: pips.toFixed(1)+' pips', cls: 'cr' },
+        'ms-lots': { text: lots+' lots', cls: '' },
+    };
+    if (msg) snap._msg = msg;
+    return snap;
+}
+
+/* ── Init ── */
+window.addEventListener('load', () => runEngine('sprint'));
+window.addEventListener('resize', () => { ['sprint','pyramid','matrix'].forEach(k => resizeChart(k)); });
 </script>
 </body>
 </html>
