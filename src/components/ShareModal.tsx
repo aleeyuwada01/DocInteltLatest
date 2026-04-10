@@ -6,10 +6,11 @@ import { toast } from 'sonner';
 interface ShareModalProps {
   file: any;
   user: any;
+  token: string;
   onClose: () => void;
 }
 
-export function ShareModal({ file, user, onClose }: ShareModalProps) {
+export function ShareModal({ file, user, token, onClose }: ShareModalProps) {
   const [activeTab, setActiveTab] = useState<'internal' | 'public'>('internal');
   
   // Public links state
@@ -43,12 +44,11 @@ export function ShareModal({ file, user, onClose }: ShareModalProps) {
   const loadSharedUsers = async () => {
     setLoadingUsers(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/share/user', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}` 
+          'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify({ fileId: file.id, action: 'list' })
       });
@@ -101,12 +101,11 @@ export function ShareModal({ file, user, onClose }: ShareModalProps) {
 
     setInviting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/share/user', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}` 
+          'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify({ fileId: file.id, targetEmail: inviteEmail.trim(), action: 'add' })
       });
@@ -126,12 +125,11 @@ export function ShareModal({ file, user, onClose }: ShareModalProps) {
 
   const handleRevokeInternal = async (targetEmail: string, userId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/share/user', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}` 
+          'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify({ fileId: file.id, targetEmail, action: 'remove' })
       });

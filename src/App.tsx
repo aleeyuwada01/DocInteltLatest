@@ -738,6 +738,7 @@ export default function App() {
         <ShareModal 
           file={activeFileForAction} 
           user={user} 
+          token={token}
           onClose={() => { setIsShareOpen(false); setActiveFileForAction(null); }} 
         />
       )}
