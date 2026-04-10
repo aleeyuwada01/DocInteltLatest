@@ -14,16 +14,16 @@ This file documents the exact features that are currently built, wired up, and f
 - **Status Clarity:** Removed the redundant "Ready" badges for a cleaner interface focused on content.
 
 ## AI Intelligence Features
-- **Doc Chat (Contextual Deep Dive):** Users can click "Ask DocIntel AI" on any file to enter a dedicated chat mode. This bypasses global search and feeds the document's full parsed content directly to the AI.
-- **Multi-turn Conversational Memory:** The chat engine now supports continuous chaining. Users can ask follow-up questions (e.g., "Filter that table for amounts over $500") and the AI maintains full context across the entire session.
-- **Tabular Data Extractions:** Optimized AI instructions for spreadsheet/CSV files to automatically generate clean Markdown tables for records like debtors or financial summaries.
-- **Citation Ranking:** Visual badges attached to reference files indicate mathematical match strength.
-- **Compare Documents:** Side-by-side side evaluation of two documents via Gemini Pro.
-- **Main Drive Summarizer:** Snapshot generation for the entire root drive.
+- **Doc Chat (Contextual Deep Dive):** Dedicated chat mode with continuous conversation memory focusing on the full content of specific document fragments.
+- **Improved Semantic Search:** Global search now uses high-dimensional embeddings. It is fully "trash-aware," automatically filtering out deleted items from vector search results.
+- **Side-by-Side Comparison:** AI-driven document evaluation that highlights differences between complex datasets or contracts.
+- **Drive Summarizer:** Generates an executive snapshot for the user's root knowledge base.
+- **Public Share Links:** Secure document sharing for unauthenticated viewers via a backend proxy that generates temporary server-side storage credentials.
 
 ## Settings & Administration
 - **Department Sub-Accounts:** Admin capability to generate sub-accounts with enforced data isolation via RDS.
 
 ## Known Issues / Technical Debt
-- User Passwords in the Settings tab are not currently hashed if altered directly via local state (though Supabase Auth handles actual authentication securely).
-- The Local proxy server (`server.ts`) handles Vercel API routing but can occasionally lag during heavy chunked uploads; Production Vercel environments handle it smoother natively.
+- **PWA Removal:** The `vite-plugin-pwa` was removed due to service worker caching issues (stale builds). This improved development stability significantly.
+- **Vercel Hobby Limit:** Consolidates public share logic into `api/search.ts` to stay within the 12-function limit.
+- **Settings State:** Local state for passwords in the Settings tab is for UI placeholder purposes; Supabase handles the actual secure auth.

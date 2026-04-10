@@ -5,9 +5,9 @@ This document outlines features that are planned but NOT YET BUGILT. Future AI a
 ## Tier 1 — Teams & Collaboration (Next Priorities)
 *Currently, Departments exist as isolated Sub-Accounts. They need file-sharing capabilities.*
 
-1. **🔗 File Sharing (Link & User-to-User)**
-   - Need to implement `shared_files` join table in Supabase.
-   - Requires API adjustments to RLS policies (`auth.uid() = owner_id OR auth.uid() IN (shared_with)`).
+1. **🔗 File Sharing (User-to-User)**
+   - Need to implement `shared_files` join table in Supabase for internal sharing.
+   - Public link sharing is already functional via `/api/search?mode=share`.
 
 2. **📊 Activity Feed / Audit Log**
    - Teams need to see "Who did what". 
@@ -33,4 +33,4 @@ This document outlines features that are planned but NOT YET BUGILT. Future AI a
    - Visualize intelligence: Pie charts of storage usage by file type, line charts of search query volume, and a tag cloud of the most common concepts in the knowledge base.
 
 3. **📱 Progressive Web App (PWA)**
-   - Add `vite-plugin-pwa` so users can Install to Home Screen on mobile/desktop without wrapping natively.
+   - On-hold: Initial `vite-plugin-pwa` implementation caused severe stale caching bugs (`Sparkles is not defined`). Future attempts should focus on robust service-worker lifecycle management.

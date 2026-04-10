@@ -16,7 +16,7 @@ DocIntel is a modern, AI-first document management platform designed to transfor
 - **Styling:** Tailwind CSS 4.0 for utility-first design and consistent tokens.
 - **Animations:** Framer Motion for premium micro-interactions and smooth transitions.
 - **State Management:** React Context + Native Hooks for high-performance UI updates.
-- **PWA:** Integrated Service Workers (via `vite-plugin-pwa`) for offline-ready deployment.
+- **Reliability:** Automated service-worker purging to prevent stale build artifacts.
 
 ### 2.2. Backend & Data Layer
 - **Database:** Supabase (PostgreSQL 17).
@@ -25,7 +25,7 @@ DocIntel is a modern, AI-first document management platform designed to transfor
 - **Auth:** Supabase Auth (JWT-based) for secure session management and persistence.
 
 ### 2.3. AI & Intelligence Engine
-- **LLM:** Google Gemini 1.5 Pro (via `@google/genai`).
+- **LLM:** Google Gemini 2.5 Flash (via `@google/genai`).
 - **Parsing:** LlamaParse (High-Fidelity) for structural extraction of PDFs, Excel, and Word docs.
 - **Embeddings:** `text-embedding-004` (Google) for high-dimensional semantic mapping.
 - **Vector Database:** `pgvector` on Postgres for sub-millisecond similarity searches.
@@ -48,7 +48,7 @@ DocIntel is a modern, AI-first document management platform designed to transfor
 ### 4.1. Access Controls
 DocIntel implements a **Zero-Leak Policy**:
 - **Owner-Only Access:** Files are stored in private buckets and are inaccessible via public URLs by default.
-- **Signed URL Sharing:** Public sharing utilizes a secure bridge. A unique, cryptographic token is used to generate a temporary "Signed URL" (2-hour life), allowing public viewers to see a file without exposing the underlying storage bucket.
+- **Signed URL Sharing:** Public links use a secure backend bridge. A dedicated `mode=share` in the Search API validates tokens and generates a temporary server-side "Signed URL" (2-hour life), bypassing owner-only RLS without exposing the underlying storage bucket.
 - **Database RPCs:** Secure `SECURITY DEFINER` functions handle public metadata retrieval without exposing full table access.
 
 ## 6. Unique Technical Value Propositions (TVP)
@@ -66,7 +66,7 @@ DocIntel implements a **Zero-Leak Policy**:
 
 - **Frontend:** React 19 (Vite) + TypeScript + Framer Motion.
 - **Backend:** Supabase (PostgreSQL 17) + RLS security.
-- **AI:** Google Gemini 2.5 Pro + text-embedding-004.
+- **AI:** Google Gemini 2.5 Flash + text-embedding-004.
 - **Parsing:** LlamaParse Structural Extraction.
 </details>
 

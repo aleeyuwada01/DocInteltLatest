@@ -1,15 +1,16 @@
 # DocIntel — System Architecture & Tech Stack
 
 ## Tech Stack Overview
-- **Frontend Framework:** React 18 + Vite + TypeScript
-- **Styling:** Tailwind CSS (Dark Mode supported)
+- **Frontend Framework:** React 19 + Vite + TypeScript
+- **Styling:** Tailwind CSS 4.0
 - **Icons:** Lucide React
 - **Notifications:** Sonner
-- **Backend / BaaS:** Supabase (PostgreSQL, Auth, Storage, Edge Functions via Webhooks)
+- **Backend / BaaS:** Supabase (PostgreSQL 17, Auth, Storage)
 - **File Uploads:** `tus-js-client` (Resumable chunked uploads)
 - **AI Processing:** 
   - LlamaParse (Document extraction)
-  - Google Gemini 1.5/2.5 Flash / Vision (OCR, Chat, Semantic Search, Content Summarization, Document Comparison)
+  - Google Gemini 2.5 Flash (OCR, Chat, Semantic Search, Content Summarization, Document Comparison)
+  - text-embedding-004 (Google) for high-dimensional semantic mapping.
 
 ## Core Systems
 
@@ -42,8 +43,8 @@ The database uses strict Row Level Security (RLS) to ensure multi-tenant isolati
 ### 4. Vercel Serverless Functions
 Local development uses a custom `server.ts` proxy to mirror Vercel's edge architecture. All APIs live in `/api/*.ts` and handle Auth headers explicitly using the Supabase Admin SDK or standard Client.
 
-- `/api/chat.ts` - Streaming chat with citations.
-- `/api/search.ts` - Vector semantic search.
-- `/api/compare.ts` - Document comparison.
-- `/api/webhook.ts` - LlamaParse/Gemini ingestion pipeline.
-- `/api/departments.ts` - Sub-account CRUD.
+- `/api/chat.ts` - Streaming AI chat with continuous memory and citations.
+- `/api/search.ts` - Consolidated endpoint for Vector semantic search, Related Files, and **Public Share Token Validation**.
+- `/api/compare.ts` - Multi-document evaluation engine.
+- `/api/webhook.ts` - LlamaParse/Gemini ingestion pipeline (structural extraction + AI enrichment).
+- `/api/departments.ts` - Administrative sub-account management.
