@@ -11,7 +11,7 @@
       "destination": "/api/files/[id]/download"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|trading|whitepaper).*)",
       "destination": "/index.html"
     }
   ],
