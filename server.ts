@@ -33,15 +33,6 @@ async function startServer() {
         }
       }
 
-      // Handle /api/share/:token  →  api/share/[token].ts
-      if (req.path.startsWith('/api/share/')) {
-        const parts = req.path.split('/');
-        if (parts.length === 4) {
-          functionPath = `./api/share/[token]`;
-          req.query.token = parts[3];
-        }
-      }
-
       try {
         // Find the module
         const modulePath = path.resolve(__dirname, `${functionPath}.ts`);

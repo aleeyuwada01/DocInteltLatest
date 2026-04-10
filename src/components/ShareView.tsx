@@ -24,7 +24,7 @@ export function ShareView() {
   const loadSharedFile = async (token: string) => {
     try {
       // Call our backend — uses service_role key server-side, so no user session needed
-      const res = await fetch(`/api/share/${token}`);
+      const res = await fetch(`/api/search?mode=share&token=${token}`);
       const data = await res.json();
 
       if (!res.ok) {

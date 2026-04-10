@@ -11,10 +11,6 @@
       "destination": "/api/files/[id]/download"
     },
     {
-      "source": "/api/share/:token",
-      "destination": "/api/share/[token]"
-    },
-    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
