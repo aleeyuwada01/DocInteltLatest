@@ -461,11 +461,17 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
     onPreviewFile(file.id);
   };
 
+  const isOwner = file.owner_id === user?.id || file.ownerId === user?.id;
+
   const menuItems = isTrash ? (
     <>
       <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Download className="w-4 h-4" /> Download</button>
-      <button onClick={(e) => handleAction('restore', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><RotateCcw className="w-4 h-4 text-blue-500" /> Restore</button>
-      <button onClick={(e) => handleAction('delete', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash className="w-4 h-4" /> Delete Permanently</button>
+      {isOwner && (
+        <>
+          <button onClick={(e) => handleAction('restore', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><RotateCcw className="w-4 h-4 text-blue-500" /> Restore</button>
+          <button onClick={(e) => handleAction('delete', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash className="w-4 h-4" /> Delete Permanently</button>
+        </>
+      )}
     </>
   ) : (
     <>
@@ -478,34 +484,49 @@ function FileCard({ file, isTrash, refresh, token, viewMode, user, onPreviewFile
       <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:tags', { detail: file })); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
         <Tag className="w-4 h-4 text-teal-500" /> Manage Tags
       </button>
-      <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:share', { detail: file })); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-        <Share2 className="w-4 h-4 text-indigo-500" /> Share Link
-      </button>
-      <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-      <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setRenameValue(originalName); setRenaming(true); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-        <Pencil className="w-4 h-4 text-gray-400" /> Rename File
-      </button>
-      <div className="relative">
-        <button onClick={(e) => { e.stopPropagation(); setMoveMenuOpen(!moveMenuOpen); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-          <FolderInput className="w-4 h-4 text-gray-400" /> Move to Folder
+      
+      {isOwner && (
+        <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); window.dispatchEvent(new CustomEvent('docintel:share', { detail: file })); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
+          <Share2 className="w-4 h-4 text-indigo-500" /> Share Link
         </button>
-        {moveMenuOpen && (
-          <div className="absolute left-full top-0 ml-2 w-56 max-h-60 overflow-y-auto bg-white dark:bg-[#1e1f20] border border-gray-100 dark:border-gray-800 rounded-xl shadow-xl z-20 py-2">
-            <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setMoveMenuOpen(false); onMoveFile?.(file.id, null); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-[#37393b]">
-              <HardDrive className="w-4 h-4 text-blue-500" /> Root Folder
-            </button>
-            <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
-            {(allFolders || []).map((fld: any) => (
-              <button key={fld.id} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setMoveMenuOpen(false); onMoveFile?.(file.id, fld.id); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#37393b] truncate">
-                <Folder className="w-4 h-4 shrink-0 opacity-50" /> {fld.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Download className="w-4 h-4 text-gray-400" /> Download</button>
+      )}
+      
       <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-      <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /> Move to Trash</button>
+      
+      {isOwner && (
+        <>
+          <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setRenameValue(originalName); setRenaming(true); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
+            <Pencil className="w-4 h-4 text-gray-400" /> Rename File
+          </button>
+          <div className="relative">
+            <button onClick={(e) => { e.stopPropagation(); setMoveMenuOpen(!moveMenuOpen); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]">
+              <FolderInput className="w-4 h-4 text-gray-400" /> Move to Folder
+            </button>
+            {moveMenuOpen && (
+              <div className="absolute left-full top-0 ml-2 w-56 max-h-60 overflow-y-auto bg-white dark:bg-[#1e1f20] border border-gray-100 dark:border-gray-800 rounded-xl shadow-xl z-20 py-2">
+                <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setMoveMenuOpen(false); onMoveFile?.(file.id, null); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-[#37393b]">
+                  <HardDrive className="w-4 h-4 text-blue-500" /> Root Folder
+                </button>
+                <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+                {(allFolders || []).map((fld: any) => (
+                  <button key={fld.id} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setMoveMenuOpen(false); onMoveFile?.(file.id, fld.id); }} className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#37393b] truncate">
+                    <Folder className="w-4 h-4 shrink-0 opacity-50" /> {fld.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <button onClick={(e) => handleAction('download', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#37393b]"><Download className="w-4 h-4 text-gray-400" /> Download</button>
+      
+      {isOwner && (
+        <>
+          <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+          <button onClick={(e) => handleAction('trash', e)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-4 h-4" /> Move to Trash</button>
+        </>
+      )}
     </>
   );
 

@@ -1,7 +1,7 @@
 import {
   HardDrive, Trash2, Cloud, Plus, FolderPlus, FileUp, X,
   ChevronRight, UploadCloud, Settings, Moon, Sun, Files, FolderUp,
-  Star, Clock, GitCompareArrows, Activity, List, Tag
+  Star, Clock, GitCompareArrows, Activity, List, Tag, Users
 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -195,6 +195,12 @@ export function Sidebar({
               label="All Documents"
               active={currentView === 'drive'}
               onClick={() => setCurrentView('drive')}
+            />
+            <NavItem
+              icon={<Users size={16} />}
+              label="Shared with me"
+              active={currentView === 'shared'}
+              onClick={() => setCurrentView('shared')}
             />
             <NavItem
               icon={<Activity size={16} />}

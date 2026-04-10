@@ -215,6 +215,9 @@ export default function App() {
         filesQuery = filesQuery.is('trashed_at', null).not('starred_at', 'is', null);
         // Folders don't support starring in the schema currently, so return an empty query
         foldersQuery = foldersQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      } else if (currentView === 'shared') {
+        filesQuery = filesQuery.is('trashed_at', null).contains('shared_with', [user.id]);
+        foldersQuery = foldersQuery.is('trashed_at', null).contains('shared_with', [user.id]);
       } else {
         filesQuery = filesQuery.is('trashed_at', null);
         foldersQuery = foldersQuery.is('trashed_at', null);
@@ -222,8 +225,8 @@ export default function App() {
           filesQuery = filesQuery.eq('folder_id', currentFolderId);
           foldersQuery = foldersQuery.eq('parent_id', currentFolderId);
         } else {
-          filesQuery = filesQuery.is('folder_id', null);
-          foldersQuery = foldersQuery.is('parent_id', null);
+          filesQuery = filesQuery.is('folder_id', null).eq('owner_id', user.id);
+          foldersQuery = foldersQuery.is('parent_id', null).eq('owner_id', user.id);
         }
       }
 
