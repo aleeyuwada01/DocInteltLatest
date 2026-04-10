@@ -155,7 +155,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         fileMap.set(r.file_id, r);
       }
     }
-    const deduped = Array.from(fileMap.values());
+
+    // ── Post-filter: strip trashed files from vector results ──────────────────
+    // match_embeddings RPC does not check trashed_at, so we verify here.
+    const candidateIds = Array.from(fileMap.keys());
+    let trashedIds = new Set<string>();
+    if (candidateIds.length > 0) {
+      const { data: fileStatuses } = await userClient
+        .from('files')
+        .select('id, trashed_at')
+        .in('id', candidateIds);
+      for (const f of (fileStatuses || [])) {
+        if (f.trashed_at !== null) trashedIds.add(f.id);
+      }
+    }
+
+    const deduped = Array.from(fileMap.values()).filter((r: any) => !trashedIds.has(r.file_id));
 
     const formattedResults = deduped.map((r: any) => ({
       file_id: r.file_id,
